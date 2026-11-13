@@ -6,20 +6,29 @@ Server edition of **HV-Planer** (browser-based fuse box / distribution board doc
 - **SQLite storage** (Node's built-in `node:sqlite`, no native dependencies)
 - plan list, **autosave**, **version history** with restore, and conflict detection
 
-The planner itself (frontend) is HV-Planer V6.66 by its upstream author. `web/` is generated from the
-unmodified upstream files by `tools/patch_frontend.py`; nothing in the upstream code is edited by hand.
+There are two interfaces, served side by side:
+
+- **`/v2` – the new interface** (`app/`): written from scratch with Svelte and TypeScript. Responsive on desktop,
+  tablet and phone, device catalog maintained in an admin UI, one consistent design. See [New interface](#new-interface-v2).
+- **`/` – the previous interface** (`web/`): HV-Planer V6.66 by its upstream author. `web/` is generated from the
+  unmodified upstream files by `tools/patch_frontend.py`; nothing in the upstream code is edited by hand.
 
 > **License:** the upstream planner is only published as "free to use". Do not redistribute the patched
-> planner without asking the upstream author. The server code (`server/`, `tools/`) is separate from that.
+> planner without asking the upstream author. The server code (`server/`, `tools/`) and the new interface (`app/`)
+> are separate from that and contain no upstream code.
 
 ## Quick start (local, no OIDC)
 
 ```bash
-cd server && npm ci
+cd app && npm ci && npm run build      # builds the new interface into app/dist
+cd ../server && npm ci
 APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
 ```
 
-`AUTH_DISABLED=true` is for development only – there is no login at all in that mode.
+Then open <http://localhost:8080/v2/>. `AUTH_DISABLED=true` is for development only – there is no login at all
+in that mode, and everyone is a catalog admin.
+
+For frontend work run `npm run dev` in `app/` next to the server; Vite proxies `/api` to port 8080.
 
 ## Running with OIDC
 
@@ -49,14 +58,42 @@ APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
 | `OIDC_CLIENT_SECRET` | – | Empty = public client; otherwise `client_secret_post` |
 | `OIDC_PROVIDER_NAME` | `OIDC Provider` | Label of the login button |
 | `OIDC_SCOPES` | `openid email profile` | Requested scopes |
+| `OIDC_ADMIN_GROUP` | – | Members of this group may maintain the device catalog. Empty = nobody |
+| `OIDC_GROUPS_CLAIM` | `groups` | Claim (ID token or UserInfo) that lists the user's groups |
 | `SESSION_TTL_HOURS` | `168` | Session lifetime, renewed on activity |
 | `HISTORY_KEEP` | `50` | Versions kept per plan |
 | `HISTORY_MIN_INTERVAL_MINUTES` | `10` | At most one history version per interval |
 | `DB_PATH` | `/data/hv-planer.sqlite` (image) | SQLite file |
 | `MAX_BODY_MB` | `5` | Maximum plan size |
 | `PORT` | `8080` | Listen port |
+| `APP_DIR` | `/app/app` (image) | Built new interface (`app/dist`) |
 
 Who may sign in is controlled by the identity provider (e.g. by assigning the application to users or groups there); the app accepts every user the provider authenticates.
+
+## New interface (`/v2`)
+
+- **Views:** cabinet (SVG, pan and zoom, pinch on touch), device list, logic tree, circuit diagram with separate
+  N and PE paths, bill of materials with CSV export, plausibility check. Every view prints via the menu.
+- **View and edit mode:** phones and tablets start in view mode – tap a device to see what feeds it and what it
+  supplies, or use the search. Editing is one tap away: pick a device from the palette and tap a rail; drag with the
+  mouse or long-press on touch. Undo/redo, autosave, conflict detection, version history and sharing work as before.
+- **Device catalog:** the built-in devices live in `server/src/catalog-builtin.js` and are synced into the database
+  on start. Catalog admins add their own devices at `/v2/admin` (width in TE or mm, inputs, outputs, which input an
+  output passes on, busbar behaviour), hide built-in ones or copy them as a template. Built-in devices cannot be
+  edited, so application updates never overwrite local changes.
+- **Catalog admins** are the members of `OIDC_ADMIN_GROUP`. The provider has to send the groups claim; many need an
+  extra scope for that (e.g. add `groups` to `OIDC_SCOPES`). The role is read at sign-in, so a change takes effect
+  with the next login.
+- **Plans keep a snapshot** of the device definitions they use. Changing or deleting a catalog entry never alters
+  existing plans; the device properties offer an update when the catalog entry has changed.
+
+### Plans from the previous interface
+
+The two interfaces store different formats in the same table. `GET /api/plans` returns only plans in the previous
+format unless `?format=all` (or `v2`) is given, so the previous interface never opens a plan it cannot read.
+The new interface lists everything, shows old plans read-only and offers **"Als Kopie übernehmen"**, which converts
+the plan into a new one and leaves the original untouched. JSON files exported from the previous interface can be
+imported the same way. Device types that the new catalog does not know are kept as placeholders without terminals.
 
 ## Login flow
 
@@ -71,7 +108,7 @@ Who may sign in is controlled by the identity provider (e.g. by assigning the ap
 The provider must return the `sub` and `email` claims. State is held in memory, so run a single instance;
 a restart only aborts logins that are in progress.
 
-## Behavior
+## Behavior (previous interface)
 
 - The plan name is the "Projektname" field. The first save creates the plan; afterwards autosave runs ~3 s after
   a change. Ctrl+S saves immediately.
@@ -109,4 +146,7 @@ If an anchor no longer matches, the script aborts with `PATCH-FEHLER` instead of
 
 ## Tests
 
-`cd server && npm test` – API, end-to-end OIDC login (against `oidc-provider`) and frontend integration (jsdom).
+- `cd server && npm test` – API, catalog and admin role, end-to-end OIDC login (against `oidc-provider`) and
+  integration of the previous frontend (jsdom).
+- `cd app && npm test` – plan model, phase and busbar resolution, reports and the import of old plans (Vitest);
+  `npm run check` type-checks the Svelte code.

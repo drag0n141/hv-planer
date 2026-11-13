@@ -1,13 +1,24 @@
+# ---- Build the new interface (served below /v2) ----
+FROM node:24-alpine AS app
+WORKDIR /build/app
+COPY app/package.json app/package-lock.json ./
+RUN npm ci
+COPY app ./
+RUN npm run build
+
+# ---- Runtime ----
 FROM node:24-alpine
 ENV NODE_ENV=production \
     PORT=8080 \
     DB_PATH=/data/hv-planer.sqlite \
-    WEB_DIR=/app/web
+    WEB_DIR=/app/web \
+    APP_DIR=/app/app
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server/src ./src
 COPY web /app/web
+COPY --from=app /build/app/dist /app/app
 RUN mkdir -p /data && chown -R node:node /data
 USER node
 VOLUME /data

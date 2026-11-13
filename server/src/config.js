@@ -29,6 +29,8 @@ export function loadConfig(env = process.env) {
     appUrl: String(env.APP_URL || "").replace(/\/+$/, ""),
     dbPath: env.DB_PATH || path.resolve(here, "../data/hv-planer.sqlite"),
     webDir: env.WEB_DIR || path.resolve(here, "../../web"),
+    // Gebaute neue Oberfläche (app/dist), ausgeliefert unter /v2
+    appDir: env.APP_DIR || path.resolve(here, "../../app/dist"),
     authDisabled,
     sessionSecret: env.SESSION_SECRET || "",
     sessionTtlSeconds: Math.round(num(env.SESSION_TTL_HOURS, 168) * 3600),
@@ -43,6 +45,9 @@ export function loadConfig(env = process.env) {
       clientSecret: env.OIDC_CLIENT_SECRET || "",
       scopes: env.OIDC_SCOPES || "openid email profile",
       allowHttp: bool(env.OIDC_ALLOW_HTTP),
+      // Mitglieder dieser Gruppe dürfen den Gerätekatalog pflegen. Leer = niemand.
+      adminGroup: String(env.OIDC_ADMIN_GROUP || "").trim(),
+      groupsClaim: String(env.OIDC_GROUPS_CLAIM || "groups").trim(),
     },
   };
 

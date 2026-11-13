@@ -14,6 +14,15 @@ export function makeWebDir() {
   return dir;
 }
 
+/** Stellvertreter für die gebaute neue Oberfläche (app/dist). */
+export function makeAppDir() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hv-app-"));
+  fs.mkdirSync(path.join(dir, "assets"));
+  fs.writeFileSync(path.join(dir, "index.html"), "<!doctype html><title>HV2</title>");
+  fs.writeFileSync(path.join(dir, "assets", "app-abc123.js"), "console.log(1)");
+  return dir;
+}
+
 export async function startApp(extraEnv = {}, { quiet = true } = {}) {
   const webDir = makeWebDir();
   const config = loadConfig({
@@ -24,6 +33,7 @@ export async function startApp(extraEnv = {}, { quiet = true } = {}) {
     SESSION_SECRET: SECRET,
     DB_PATH: ":memory:",
     WEB_DIR: webDir,
+    APP_DIR: makeAppDir(),
     HISTORY_MIN_INTERVAL_MINUTES: "0",
     ...extraEnv,
   });
@@ -41,9 +51,9 @@ export async function startApp(extraEnv = {}, { quiet = true } = {}) {
   };
 }
 
-export function sessionCookie(sub, name = sub, { secret = SECRET, expOffset = 3600 } = {}) {
+export function sessionCookie(sub, name = sub, { secret = SECRET, expOffset = 3600, admin = false } = {}) {
   const token = sign(
-    { t: "session", sub, name, email: `${sub}@example.com`, exp: Math.floor(Date.now() / 1000) + expOffset },
+    { t: "session", sub, name, email: `${sub}@example.com`, admin, exp: Math.floor(Date.now() / 1000) + expOffset },
     secret
   );
   return `hv_session=${encodeURIComponent(token)}`;

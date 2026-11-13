@@ -25,8 +25,26 @@ jobs:
       - run: npm test
         working-directory: server
 
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - run: npm run check
+        working-directory: app
+      - run: npm test
+        working-directory: app
+      - run: npm run build
+        working-directory: app
+
   image:
-    needs: test
+    needs: [test, app]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

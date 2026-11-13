@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createApiRouter } from "./api.js";
@@ -40,6 +41,27 @@ export function createApp(config, log = console) {
   // Alles Weitere erfordert eine Sitzung
   app.use(requireAuth);
   app.use("/api", createApiRouter(db, config));
+
+  // Neue Oberfläche (Single-Page-App) unter /v2. Dateien mit Hash im Namen dürfen
+  // dauerhaft gecacht werden, alle übrigen Pfade liefern die Startseite.
+  const appIndex = path.join(config.appDir, "index.html");
+  app.use(
+    "/v2",
+    express.static(config.appDir, {
+      index: false,
+      redirect: false,
+      setHeaders(res, file) {
+        res.set("Cache-Control", file.includes(`${path.sep}assets${path.sep}`) ? "public, max-age=31536000, immutable" : "no-cache");
+      },
+    })
+  );
+  app.get(/^\/v2(\/.*)?$/, (req, res) => {
+    if (req.path.startsWith("/v2/assets/")) return res.status(404).type("text/plain").send("Not found");
+    if (!fs.existsSync(appIndex)) {
+      return res.status(503).type("text/plain").send("Die neue Oberfläche ist nicht gebaut (cd app && npm run build).");
+    }
+    res.set("Cache-Control", "no-cache").sendFile(appIndex);
+  });
   app.use(
     express.static(config.webDir, {
       index: "index.html",

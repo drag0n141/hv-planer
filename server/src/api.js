@@ -1,5 +1,8 @@
+import crypto from "node:crypto";
 import express from "express";
-import { requireClientHeader } from "./auth.js";
+import { requireAdmin, requireClientHeader } from "./auth.js";
+import { validateDef } from "./catalog.js";
+import { planSchema } from "./db.js";
 
 const MAX_NAME = 120;
 
@@ -10,7 +13,7 @@ function parsePayload(body) {
   if (!data || typeof data !== "object" || Array.isArray(data) || !Array.isArray(data.devices)) {
     return { error: "data muss ein Planobjekt mit devices-Liste sein" };
   }
-  return { name, data: JSON.stringify(data) };
+  return { name, data: JSON.stringify(data), schema: planSchema(data) };
 }
 
 export function createApiRouter(db, config) {
@@ -32,6 +35,7 @@ export function createApiRouter(db, config) {
     id: p.id,
     name: p.name,
     version: p.version,
+    schema: p.schema ?? 1,
     updated_at: p.updated_at,
     updated_by: p.updated_by ?? null,
     owner_name: p.owner_name ?? null,
@@ -60,7 +64,7 @@ export function createApiRouter(db, config) {
   }
 
   r.get("/me", (req, res) => {
-    res.json({ sub: req.user.sub, name: req.user.name, email: req.user.email });
+    res.json({ sub: req.user.sub, name: req.user.name, email: req.user.email, admin: req.user.admin === true });
   });
 
   // Auswählbare Nutzer für Freigaben (alle, die sich schon angemeldet haben, außer man selbst)
@@ -68,14 +72,23 @@ export function createApiRouter(db, config) {
     res.json(db.searchUsers(req.user.sub, req.query.q));
   });
 
+  // Ohne Angabe nur Pläne im bisherigen Format: Die alte Oberfläche unter "/" kann
+  // Pläne der neuen (Schema 2) nicht lesen. Die neue Oberfläche fragt mit format=all.
   r.get("/plans", (req, res) => {
-    res.json(db.listPlans(req.user.sub).map((p) => meta(p, req.user)));
+    const format = req.query.format;
+    const want = format === "all" ? null : format === "v2" ? 2 : 1;
+    res.json(
+      db
+        .listPlans(req.user.sub)
+        .filter((p) => want == null || (p.schema ?? 1) === want)
+        .map((p) => meta(p, req.user))
+    );
   });
 
   r.post("/plans", (req, res) => {
     const p = parsePayload(req.body);
     if (p.error) return res.status(400).json({ error: p.error });
-    const created = db.createPlan({ owner: req.user.sub, ownerName: req.user.name, name: p.name, data: p.data });
+    const created = db.createPlan({ owner: req.user.sub, ownerName: req.user.name, name: p.name, data: p.data, schema: p.schema });
     res.status(201).json(created);
   });
 
@@ -96,6 +109,7 @@ export function createApiRouter(db, config) {
       id: plan.id,
       name: p.name,
       data: p.data,
+      schema: p.schema,
       expectedVersion: expected,
       editorName: req.user.name,
     });
@@ -160,6 +174,38 @@ export function createApiRouter(db, config) {
     const sub = String(req.params.sub);
     if (plan.access !== "owner" && sub !== req.user.sub) return res.status(403).json({ error: "forbidden" });
     if (!db.removeShare(plan.id, sub)) return res.status(404).json({ error: "not found" });
+    res.json({ ok: true });
+  });
+
+  // ----- Gerätekatalog: lesen dürfen alle, pflegen nur Admins -----
+  r.get("/catalog", (req, res) => {
+    const all = db.listCatalog();
+    res.json(req.user.admin === true ? all : all.filter((e) => !e.hidden));
+  });
+
+  r.post("/catalog", requireAdmin, (req, res) => {
+    const v = validateDef(req.body);
+    if (v.error) return res.status(400).json({ error: v.error });
+    const id = `custom:${crypto.randomBytes(6).toString("hex")}`;
+    res.status(201).json(db.createCatalogEntry(id, v.def, req.body?.hidden === true));
+  });
+
+  r.put("/catalog/:id", requireAdmin, (req, res) => {
+    const current = db.getCatalogEntry(String(req.params.id));
+    if (!current) return res.status(404).json({ error: "not found" });
+    const hidden = req.body?.hidden === true;
+    // Eingebaute Geräte kommen aus dem Code; hier lässt sich nur die Sichtbarkeit ändern.
+    if (current.builtin) return res.json(db.setCatalogHidden(current.id, hidden));
+    const v = validateDef(req.body);
+    if (v.error) return res.status(400).json({ error: v.error });
+    res.json(db.updateCatalogEntry(current.id, v.def, hidden));
+  });
+
+  r.delete("/catalog/:id", requireAdmin, (req, res) => {
+    const current = db.getCatalogEntry(String(req.params.id));
+    if (!current) return res.status(404).json({ error: "not found" });
+    if (current.builtin) return res.status(400).json({ error: "Eingebaute Geräte lassen sich nur ausblenden." });
+    db.deleteCatalogEntry(current.id);
     res.json({ ok: true });
   });
 

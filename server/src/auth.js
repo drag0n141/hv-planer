@@ -39,6 +39,23 @@ export function safeRedirect(value, appUrl, fallback = "/") {
   }
 }
 
+/**
+ * Admin ist, wer laut Gruppen-Claim Mitglied der konfigurierten Gruppe ist.
+ * Der Claim darf eine Liste oder ein einzelner (auch komma-/leerzeichengetrennter) Text sein.
+ */
+export function isAdmin(claims, { adminGroup, groupsClaim }) {
+  if (!adminGroup) return false;
+  const raw = claims?.[groupsClaim];
+  const groups = Array.isArray(raw) ? raw.map(String) : typeof raw === "string" ? raw.split(/[\s,]+/) : [];
+  return groups.includes(adminGroup);
+}
+
+/** Middleware: nur für Admins. Setzt eine vorherige requireAuth voraus. */
+export function requireAdmin(req, res, next) {
+  if (req.user?.admin !== true) return res.status(403).json({ error: "Nur für Administratoren." });
+  next();
+}
+
 function loginPage(providerName) {
   return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HV-Planer – Anmeldung</title>
@@ -116,6 +133,7 @@ export function setupAuth(app, config, log = console) {
       sub: String(user.sub),
       name: String(user.name || user.email || user.sub).slice(0, 120),
       email: user.email ? String(user.email).slice(0, 200) : "",
+      admin: user.admin === true,
       exp: now() + config.sessionTtlSeconds,
     };
     setCookie(res, SESSION_COOKIE, sign(payload, config.sessionSecret), { maxAge: config.sessionTtlSeconds, secure });
@@ -193,8 +211,9 @@ export function setupAuth(app, config, log = console) {
         });
         let claims = { ...tokens.claims() };
 
-        // Fehlt die E-Mail im ID-Token, beim UserInfo-Endpunkt nachfragen.
-        if (!claims.email && tokens.access_token) {
+        // Fehlen E-Mail oder (für die Admin-Rolle) die Gruppen im ID-Token, beim UserInfo-Endpunkt nachfragen.
+        const needGroups = oc.adminGroup && claims[oc.groupsClaim] == null;
+        if ((!claims.email || needGroups) && tokens.access_token) {
           try {
             claims = { ...(await oidc.fetchUserInfo(cfg, tokens.access_token, claims.sub)), ...claims };
           } catch (e) {
@@ -210,6 +229,7 @@ export function setupAuth(app, config, log = console) {
             sub: claims.sub,
             name: claims.name || claims.preferred_username || String(claims.email).split("@")[0],
             email: claims.email,
+            admin: isAdmin(claims, oc),
           },
           redirectUrl: stored.redirectUrl || "/",
         });
@@ -238,7 +258,7 @@ export function setupAuth(app, config, log = console) {
   /** Setzt req.user oder beantwortet die Anfrage mit 401 bzw. Weiterleitung zur Login-Seite. */
   function requireAuth(req, res, next) {
     if (config.authDisabled) {
-      req.user = { sub: "dev", name: "Entwicklung", email: "" };
+      req.user = { sub: "dev", name: "Entwicklung", email: "", admin: true };
       return next();
     }
     const session = verify(parseCookies(req.headers.cookie)[SESSION_COOKIE], config.sessionSecret, "session");
