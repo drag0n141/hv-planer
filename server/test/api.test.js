@@ -197,21 +197,85 @@ describe("API", () => {
   });
 });
 
-describe("SHARE_PLANS=true", () => {
-  let ctx;
+describe("Freigaben", () => {
+  let ctx, alice, bob, carol, planId;
   before(async () => {
-    ctx = await startApp({ SHARE_PLANS: "true" });
+    ctx = await startApp();
+    alice = client(ctx.base, sessionCookie("alice", "Alice"));
+    bob = client(ctx.base, sessionCookie("bob", "Bob"));
+    carol = client(ctx.base, sessionCookie("carol", "Carol"));
+    await bob("GET", "/api/me"); // Nutzer werden beim ersten Zugriff bekannt
+    await carol("GET", "/api/me");
+    planId = (await alice("POST", "/api/plans", { name: "Haus", data: samplePlan() })).json.id;
   });
   after(() => ctx.close());
 
-  test("angemeldete Nutzer teilen sich die Pläne", async () => {
-    const a = client(ctx.base, sessionCookie("alice", "Alice"));
-    const b = client(ctx.base, sessionCookie("bob", "Bob"));
-    const { json } = await a("POST", "/api/plans", { name: "Gemeinsam", data: samplePlan() });
-    const seen = await b("GET", "/api/plans");
-    assert.equal(seen.json[0].name, "Gemeinsam");
-    assert.equal(seen.json[0].mine, false);
-    assert.equal((await b("PUT", `/api/plans/${json.id}`, { name: "Gemeinsam", data: samplePlan({ nextId: 5 }), version: 1 })).status, 200);
-    assert.equal((await a("GET", `/api/plans/${json.id}`)).json.updated_by, "Bob");
+  test("Nutzerauswahl: andere bekannte Nutzer, nicht man selbst, Suche ohne Wildcards", async () => {
+    const all = (await alice("GET", "/api/users")).json.map((u) => u.sub);
+    assert.deepEqual(all.sort(), ["bob", "carol"]);
+    assert.deepEqual((await alice("GET", "/api/users?q=BO")).json.map((u) => u.sub), ["bob"]);
+    assert.deepEqual((await alice("GET", "/api/users?q=%25")).json, []);
+  });
+
+  test("ohne Freigabe ist der Plan unsichtbar", async () => {
+    assert.equal((await bob("GET", `/api/plans/${planId}`)).status, 404);
+    assert.deepEqual((await bob("GET", "/api/plans")).json, []);
+  });
+
+  test("Freigabe-Verwaltung nur für den Besitzer, mit Validierung", async () => {
+    assert.equal((await bob("PUT", `/api/plans/${planId}/shares/carol`, { permission: "viewer" })).status, 404);
+    assert.equal((await alice("PUT", `/api/plans/${planId}/shares/bob`, { permission: "admin" })).status, 400);
+    assert.equal((await alice("PUT", `/api/plans/${planId}/shares/alice`, { permission: "viewer" })).status, 400);
+    assert.equal((await alice("PUT", `/api/plans/${planId}/shares/niemand`, { permission: "viewer" })).status, 404);
+  });
+
+  test("Betrachter darf lesen, aber nicht ändern, löschen, teilen oder den Verlauf sehen", async () => {
+    const r = await alice("PUT", `/api/plans/${planId}/shares/bob`, { permission: "viewer" });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json.map((s) => [s.sub, s.permission]), [["bob", "viewer"]]);
+
+    const list = (await bob("GET", "/api/plans")).json;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].permission, "viewer");
+    assert.equal(list[0].mine, false);
+    assert.equal(list[0].owner_name, "Alice");
+    const got = await bob("GET", `/api/plans/${planId}`);
+    assert.equal(got.status, 200);
+    assert.equal(got.json.permission, "viewer");
+
+    assert.equal((await bob("PUT", `/api/plans/${planId}`, { name: "x", data: samplePlan(), version: 1 })).status, 403);
+    assert.equal((await bob("DELETE", `/api/plans/${planId}`)).status, 403);
+    assert.equal((await bob("GET", `/api/plans/${planId}/history`)).status, 403);
+    assert.equal((await bob("GET", `/api/plans/${planId}/shares`)).status, 403);
+    assert.equal((await bob("DELETE", `/api/plans/${planId}/shares/carol`)).status, 403);
+    assert.equal((await carol("GET", `/api/plans/${planId}`)).status, 404, "Dritte sehen nichts");
+  });
+
+  test("Bearbeiter darf speichern, aber weder löschen noch teilen", async () => {
+    await alice("PUT", `/api/plans/${planId}/shares/bob`, { permission: "editor" });
+    const put = await bob("PUT", `/api/plans/${planId}`, { name: "Haus", data: samplePlan({ nextId: 9 }), version: 1 });
+    assert.equal(put.status, 200);
+    assert.equal((await alice("GET", `/api/plans/${planId}`)).json.updated_by, "Bob");
+    assert.equal((await bob("GET", `/api/plans/${planId}/history`)).status, 200);
+    assert.equal((await bob("DELETE", `/api/plans/${planId}`)).status, 403);
+    assert.equal((await bob("PUT", `/api/plans/${planId}/shares/carol`, { permission: "viewer" })).status, 403);
+  });
+
+  test("Empfänger kann die Freigabe verlassen, Besitzer kann sie entziehen", async () => {
+    assert.equal((await bob("DELETE", `/api/plans/${planId}/shares/bob`)).status, 200);
+    assert.equal((await bob("GET", `/api/plans/${planId}`)).status, 404);
+
+    await alice("PUT", `/api/plans/${planId}/shares/carol`, { permission: "viewer" });
+    assert.equal((await carol("GET", `/api/plans/${planId}`)).status, 200);
+    assert.equal((await alice("DELETE", `/api/plans/${planId}/shares/carol`)).status, 200);
+    assert.equal((await carol("GET", `/api/plans/${planId}`)).status, 404);
+    assert.equal((await alice("DELETE", `/api/plans/${planId}/shares/carol`)).status, 404);
+  });
+
+  test("Plan löschen entfernt auch die Freigaben", async () => {
+    await alice("PUT", `/api/plans/${planId}/shares/bob`, { permission: "viewer" });
+    assert.equal((await alice("DELETE", `/api/plans/${planId}`)).status, 200);
+    assert.equal(ctx.db.raw.prepare("SELECT COUNT(*) AS n FROM plan_shares").get().n, 0);
+    assert.deepEqual((await bob("GET", "/api/plans")).json, []);
   });
 });

@@ -32,7 +32,6 @@ export function loadConfig(env = process.env) {
     authDisabled,
     sessionSecret: env.SESSION_SECRET || "",
     sessionTtlSeconds: Math.round(num(env.SESSION_TTL_HOURS, 168) * 3600),
-    sharePlans: bool(env.SHARE_PLANS, false),
     historyKeep: Math.round(num(env.HISTORY_KEEP, 50)),
     historyMinIntervalMs: Math.round(num(env.HISTORY_MIN_INTERVAL_MINUTES, 10) * 60_000),
     maxBodyBytes: Math.round(num(env.MAX_BODY_MB, 5) * 1024 * 1024),

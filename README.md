@@ -46,7 +46,6 @@ APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
 | `OIDC_CLIENT_SECRET` | – | Empty = public client; otherwise `client_secret_post` |
 | `OIDC_PROVIDER_NAME` | `OIDC Provider` | Label of the login button |
 | `OIDC_SCOPES` | `openid email profile` | Requested scopes |
-| `SHARE_PLANS` | `false` | `true`: all signed-in users see and edit all plans |
 | `SESSION_TTL_HOURS` | `168` | Session lifetime, renewed on activity |
 | `HISTORY_KEEP` | `50` | Versions kept per plan |
 | `HISTORY_MIN_INTERVAL_MINUTES` | `10` | At most one history version per interval |
@@ -73,6 +72,10 @@ a restart only aborts logins that are in progress.
 
 - The plan name is the "Projektname" field. The first save creates the plan; afterwards autosave runs ~3 s after
   a change. Ctrl+S saves immediately.
+- Sharing: the owner of a plan clicks "Teilen" in the plan list, searches the users who have signed in at least once and
+  adds them as **Betrachter** (viewer, read-only) or **Bearbeiter** (editor, can save and restore versions). Only the owner
+  can delete the plan or manage shares; recipients can remove themselves with "Verlassen". Plans that are not shared with
+  you stay invisible. Users appear in the picker after their first login.
 - Two tabs or users: optimistic locking. On conflict, "Save" asks whether to overwrite.
 - "Verlauf" (history) in the plan list restores older versions (saved as a new version).
 - "Plan speichern/laden" becomes "Export/Import JSON" and keeps working with files.

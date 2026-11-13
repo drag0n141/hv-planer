@@ -26,6 +26,22 @@ CREATE TABLE IF NOT EXISTS plan_history (
   saved_at TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS plan_history_plan ON plan_history(plan_id, id);
+
+CREATE TABLE IF NOT EXISTS users (
+  sub        TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  email      TEXT NOT NULL DEFAULT '',
+  last_seen  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS plan_shares (
+  plan_id    INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+  user_sub   TEXT    NOT NULL,
+  permission TEXT    NOT NULL CHECK (permission IN ('viewer', 'editor')),
+  created_at TEXT    NOT NULL,
+  PRIMARY KEY (plan_id, user_sub)
+);
+CREATE INDEX IF NOT EXISTS plan_shares_user ON plan_shares(user_sub);
 `;
 
 /**
@@ -45,8 +61,32 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
     ),
     get: db.prepare("SELECT * FROM plans WHERE id = ?"),
     list: db.prepare(
-      `SELECT id, name, version, owner, owner_name, updated_at, updated_by
-         FROM plans WHERE (? = 1 OR owner = ?) ORDER BY updated_at DESC, id DESC`
+      `SELECT p.id, p.name, p.version, p.owner, p.owner_name, p.updated_at, p.updated_by, s.permission AS share_permission
+         FROM plans p LEFT JOIN plan_shares s ON s.plan_id = p.id AND s.user_sub = ?
+        WHERE p.owner = ? OR s.user_sub IS NOT NULL
+        ORDER BY p.updated_at DESC, p.id DESC`
+    ),
+    sharePermission: db.prepare("SELECT permission FROM plan_shares WHERE plan_id = ? AND user_sub = ?"),
+    listShares: db.prepare(
+      `SELECT s.user_sub AS sub, COALESCE(u.name, s.user_sub) AS name, COALESCE(u.email, '') AS email, s.permission, s.created_at
+         FROM plan_shares s LEFT JOIN users u ON u.sub = s.user_sub
+        WHERE s.plan_id = ? ORDER BY name COLLATE NOCASE`
+    ),
+    upsertShare: db.prepare(
+      `INSERT INTO plan_shares (plan_id, user_sub, permission, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(plan_id, user_sub) DO UPDATE SET permission = excluded.permission`
+    ),
+    delShare: db.prepare("DELETE FROM plan_shares WHERE plan_id = ? AND user_sub = ?"),
+    getUser: db.prepare("SELECT sub, name, email FROM users WHERE sub = ?"),
+    upsertUser: db.prepare(
+      `INSERT INTO users (sub, name, email, last_seen) VALUES (?, ?, ?, ?)
+       ON CONFLICT(sub) DO UPDATE SET name = excluded.name, email = excluded.email, last_seen = excluded.last_seen
+       WHERE users.name <> excluded.name OR users.email <> excluded.email OR users.last_seen < ?`
+    ),
+    searchUsers: db.prepare(
+      `SELECT sub, name, email FROM users
+        WHERE sub <> ? AND (name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\')
+        ORDER BY name COLLATE NOCASE LIMIT 20`
     ),
     update: db.prepare(
       `UPDATE plans SET name = ?, data = ?, version = version + 1, updated_at = ?, updated_by = ? WHERE id = ?`
@@ -94,7 +134,34 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
 
     getPlan: (id) => q.get.get(id) ?? null,
 
-    listPlans: (owner, all) => q.list.all(all ? 1 : 0, owner),
+    /** Eigene Pläne plus Pläne, die mit dem Nutzer geteilt wurden. */
+    listPlans: (sub) => q.list.all(sub, sub),
+
+    /** 'owner' | 'editor' | 'viewer' | null */
+    getAccess(plan, sub) {
+      if (!plan) return null;
+      if (plan.owner === sub) return "owner";
+      return q.sharePermission.get(plan.id, sub)?.permission ?? null;
+    },
+
+    /** Merkt sich angemeldete Nutzer, damit man Pläne mit ihnen teilen kann. */
+    upsertUser({ sub, name, email }) {
+      const now = new Date();
+      const staleBefore = new Date(now.getTime() - 3600_000).toISOString(); // höchstens stündlich schreiben
+      q.upsertUser.run(sub, name, email ?? "", now.toISOString(), staleBefore);
+    },
+
+    getUser: (sub) => q.getUser.get(sub) ?? null,
+
+    searchUsers(exceptSub, term = "") {
+      const esc = String(term).trim().replace(/[\\%_]/g, (c) => "\\" + c);
+      const like = `%${esc}%`;
+      return q.searchUsers.all(exceptSub, like, like);
+    },
+
+    listShares: (planId) => q.listShares.all(planId),
+    setShare: (planId, sub, permission) => q.upsertShare.run(planId, sub, permission, new Date().toISOString()),
+    removeShare: (planId, sub) => q.delShare.run(planId, sub).changes > 0,
 
     /**
      * Speichert mit optimistischer Sperre. Liefert

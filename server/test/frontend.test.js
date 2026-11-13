@@ -125,3 +125,61 @@ test("Frontend: Server ohne Sitzung (401) -> Standalone-Modus", async () => {
     assert.equal($(dom, "#serverBar").hidden, true);
   } finally { dom?.window.close(); await s.close(); }
 });
+
+test("Frontend: Teilen-Panel und Nur-Lesen für Betrachter", { timeout: 60000 }, async () => {
+  const s = await startApp({ AUTH_DISABLED: "true", WEB_DIR: WEB });
+  let dom;
+  try {
+    s.db.upsertUser({ sub: "bob", name: "Bob Beispiel", email: "bob@example.com" });
+    dom = await openPage(s.base);
+    setName(dom, "Mein Plan");
+    $(dom, "#serverSaveBtn").click();
+    await sleep(600);
+    const mine = s.db.listPlans("dev")[0];
+
+    // Teilen: Nutzer suchen und als Bearbeiter hinzufügen
+    $(dom, "#plansBtn").click();
+    await sleep(500);
+    const doc = dom.window.document;
+    [...doc.querySelectorAll("#plansList button")].find((b) => b.textContent === "Teilen").click();
+    await sleep(600);
+    const search = doc.querySelector("#plansList .plan-share input[type=search]");
+    assert.ok(search, "Suchfeld vorhanden");
+    search.value = "bob";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    await sleep(900);
+    assert.match(doc.querySelector(".share-results").textContent, /Bob Beispiel/);
+    const sel = doc.querySelector(".share-results select");
+    sel.value = "editor";
+    [...doc.querySelectorAll(".share-results button")].find((b) => b.textContent === "Hinzufügen").click();
+    await sleep(800);
+    assert.deepEqual(s.db.listShares(mine.id).map((x) => [x.sub, x.permission]), [["bob", "editor"]]);
+    assert.match(doc.querySelector(".plan-share").textContent, /Bob Beispiel/);
+
+    // Betrachter-Plan von Bob: öffnen, ändern, es darf nichts gespeichert werden
+    const bobPlan = s.db.createPlan({ owner: "bob", ownerName: "Bob Beispiel", name: "Bobs Plan", data: JSON.stringify({ version: "6.66", projectName: "Bobs Plan", devices: [], nextId: 1 }) });
+    s.db.setShare(bobPlan.id, "dev", "viewer");
+    $(dom, "#plansBtn").click();
+    await sleep(100);
+    $(dom, "#plansCloseBtn").click();
+    $(dom, "#plansBtn").click();
+    await sleep(600);
+    const rows = [...doc.querySelectorAll("#plansList .plan-row")];
+    const row = rows.find((r) => r.textContent.includes("Bobs Plan"));
+    assert.match(row.textContent, /Betrachter/);
+    assert.equal([...row.querySelectorAll("button")].some((b) => b.textContent === "Verlauf" || b.textContent === "Teilen"), false);
+    [...row.querySelectorAll("button")].find((b) => b.textContent === "Öffnen").click();
+    await sleep(900);
+    assert.match($(dom, "#serverStatus").textContent, /Nur lesen/);
+    setName(dom, "Fremde Änderung");
+    await sleep(5500);
+    assert.equal(s.db.getPlan(bobPlan.id).version, 1, "Betrachter speichert nichts");
+    $(dom, "#serverSaveBtn").click();
+    await sleep(500);
+    assert.equal(s.db.getPlan(bobPlan.id).version, 1);
+    assert.match($(dom, "#serverStatus").textContent, /Nur lesen/);
+  } finally {
+    dom?.window.close();
+    await s.close();
+  }
+});

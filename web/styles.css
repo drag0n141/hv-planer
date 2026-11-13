@@ -1672,3 +1672,9 @@ footer{padding:0 16px 16px;color:var(--muted)}
 .plan-history{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px dashed #cfd4db}
 .plan-history[hidden]{display:none}
 .history-line{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}
+.plan-badge{margin-left:8px;padding:1px 7px;border-radius:10px;background:#e6edf7;color:#2f5f9f;font-size:11px;font-weight:600;vertical-align:1px}
+.plan-share strong{font-size:12px}
+.plan-share .share-add-title{margin-top:8px}
+.share-controls{display:flex;gap:6px;align-items:center}
+.share-results{display:flex;flex-direction:column;gap:6px}
+.plan-share input[type="search"]{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c9ced6;border-radius:6px;font:inherit}

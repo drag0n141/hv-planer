@@ -22,8 +22,12 @@ export function createApiRouter(db, config) {
     next();
   });
 
-  // Zugriff: nur eigene Pläne, außer SHARE_PLANS=true.
-  const visible = (plan, user) => plan && (config.sharePlans || plan.owner === user.sub);
+  // Nutzer merken, damit sie als Freigabe-Ziel auswählbar sind
+  r.use((req, _res, next) => {
+    db.upsertUser({ sub: req.user.sub, name: req.user.name, email: req.user.email });
+    next();
+  });
+
   const meta = (p, user) => ({
     id: p.id,
     name: p.name,
@@ -32,24 +36,40 @@ export function createApiRouter(db, config) {
     updated_by: p.updated_by ?? null,
     owner_name: p.owner_name ?? null,
     mine: p.owner === user.sub,
+    permission: p.owner === user.sub ? "owner" : (p.share_permission ?? db.getAccess(p, user.sub)),
   });
 
-  function loadPlan(req, res) {
+  const RANK = { viewer: 1, editor: 2, owner: 3 };
+  const NEED = { read: 1, write: 2, owner: 3 };
+
+  /** Lädt den Plan und prüft die Berechtigung. Fremde Pläne wirken wie nicht vorhanden (404). */
+  function loadPlan(req, res, need = "read") {
     const id = Number.parseInt(req.params.id, 10);
     const plan = Number.isInteger(id) ? db.getPlan(id) : null;
-    if (!visible(plan, req.user)) {
+    const access = db.getAccess(plan, req.user.sub);
+    if (!access) {
       res.status(404).json({ error: "not found" });
       return null;
     }
+    if (RANK[access] < NEED[need]) {
+      res.status(403).json({ error: "forbidden" });
+      return null;
+    }
+    plan.access = access;
     return plan;
   }
 
   r.get("/me", (req, res) => {
-    res.json({ name: req.user.name, email: req.user.email, sharePlans: config.sharePlans });
+    res.json({ sub: req.user.sub, name: req.user.name, email: req.user.email });
+  });
+
+  // Auswählbare Nutzer für Freigaben (alle, die sich schon angemeldet haben, außer man selbst)
+  r.get("/users", (req, res) => {
+    res.json(db.searchUsers(req.user.sub, req.query.q));
   });
 
   r.get("/plans", (req, res) => {
-    res.json(db.listPlans(req.user.sub, config.sharePlans).map((p) => meta(p, req.user)));
+    res.json(db.listPlans(req.user.sub).map((p) => meta(p, req.user)));
   });
 
   r.post("/plans", (req, res) => {
@@ -62,11 +82,11 @@ export function createApiRouter(db, config) {
   r.get("/plans/:id", (req, res) => {
     const plan = loadPlan(req, res);
     if (!plan) return;
-    res.json({ ...meta(plan, req.user), data: JSON.parse(plan.data) });
+    res.json({ ...meta({ ...plan, share_permission: null }, req.user), permission: plan.access, data: JSON.parse(plan.data) });
   });
 
   r.put("/plans/:id", (req, res) => {
-    const plan = loadPlan(req, res);
+    const plan = loadPlan(req, res, "write");
     if (!plan) return;
     const p = parsePayload(req.body);
     if (p.error) return res.status(400).json({ error: p.error });
@@ -87,20 +107,20 @@ export function createApiRouter(db, config) {
   });
 
   r.delete("/plans/:id", (req, res) => {
-    const plan = loadPlan(req, res);
+    const plan = loadPlan(req, res, "owner");
     if (!plan) return;
     db.deletePlan(plan.id);
     res.json({ ok: true });
   });
 
   r.get("/plans/:id/history", (req, res) => {
-    const plan = loadPlan(req, res);
+    const plan = loadPlan(req, res, "write");
     if (!plan) return;
     res.json(db.listHistory(plan.id));
   });
 
   r.get("/plans/:id/history/:hid", (req, res) => {
-    const plan = loadPlan(req, res);
+    const plan = loadPlan(req, res, "write");
     if (!plan) return;
     const entry = db.getHistory(plan.id, Number.parseInt(req.params.hid, 10));
     if (!entry) return res.status(404).json({ error: "not found" });
@@ -112,6 +132,35 @@ export function createApiRouter(db, config) {
       saved_at: entry.saved_at,
       data: JSON.parse(entry.data),
     });
+  });
+
+  // ----- Freigaben (Betrachter / Bearbeiter), nur der Besitzer verwaltet sie -----
+  r.get("/plans/:id/shares", (req, res) => {
+    const plan = loadPlan(req, res, "owner");
+    if (!plan) return;
+    res.json(db.listShares(plan.id));
+  });
+
+  r.put("/plans/:id/shares/:sub", (req, res) => {
+    const plan = loadPlan(req, res, "owner");
+    if (!plan) return;
+    const sub = String(req.params.sub);
+    const permission = req.body?.permission;
+    if (!["viewer", "editor"].includes(permission)) return res.status(400).json({ error: "permission muss viewer oder editor sein" });
+    if (sub === plan.owner) return res.status(400).json({ error: "Der Besitzer hat bereits vollen Zugriff." });
+    if (!db.getUser(sub)) return res.status(404).json({ error: "Nutzer unbekannt" });
+    db.setShare(plan.id, sub, permission);
+    res.json(db.listShares(plan.id));
+  });
+
+  // Besitzer entzieht eine Freigabe; Empfänger können sich selbst entfernen („Verlassen“)
+  r.delete("/plans/:id/shares/:sub", (req, res) => {
+    const plan = loadPlan(req, res, "read");
+    if (!plan) return;
+    const sub = String(req.params.sub);
+    if (plan.access !== "owner" && sub !== req.user.sub) return res.status(403).json({ error: "forbidden" });
+    if (!db.removeShare(plan.id, sub)) return res.status(404).json({ error: "not found" });
+    res.json({ ok: true });
   });
 
   // Unbekannte API-Pfade: JSON statt HTML
