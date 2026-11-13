@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HV-Planer V6.66</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>HV-Planer V6.66</h1>
+      <p>Verteiler planen, beschriften und logisch verbinden – komplett lokal im Browser.</p>
+    </div>
+    <div class="actions">
+      <button id="undoBtn" title="Rückgängig (Strg+Z)">↶ Rückgängig</button>
+      <button id="redoBtn" title="Wiederholen (Strg+Y / Strg+Umschalt+Z)">↷ Wiederholen</button>
+      <span id="serverBar" class="server-bar" hidden>
+        <span id="serverStatus" class="server-status" role="status" aria-live="polite"></span>
+        <button id="plansBtn" type="button" title="Pläne auf dem Server öffnen oder verwalten">Pläne</button>
+        <button id="serverSaveBtn" type="button" title="Auf dem Server speichern (Strg+S)">Speichern</button>
+        <span id="serverUser" class="server-user"></span>
+        <button id="logoutBtn" type="button">Abmelden</button>
+      </span>
+      <button id="saveBtn">Plan speichern</button>
+      <label class="file-btn">Plan laden<input id="loadInput" type="file" accept=".json,application/json" hidden></label>
+      <button id="printListBtn">Liste drucken</button>
+      <button id="bomBtn">Stückliste</button>
+      <button id="schematicBtn">Logikplan</button>
+      <button id="circuitBtn">Stromlaufplan</button>
+      <button id="checkBtn">Plausibilität</button>
+      <button id="helpBtn">Hilfe / Anleitung</button>
+      <button id="aboutBtn">About</button>
+      <button id="resetBtn" class="danger">Neu</button>
+    </div>
+  </header>
+
+  <section class="config">
+    <label class="project-name-label">Projektname
+      <input id="projectName" type="text" maxlength="80" placeholder="z. B. Zählerschrank Bestand" />
+    </label>
+    <button id="sourcesBtn" class="sources-btn" type="button">Quellen <span id="sourcesCount" class="badge">0</span></button>
+    <label>Felder
+      <select id="fieldCount">
+        <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
+      </select>
+    </label>
+    <label>Reihen je Feld
+      <select id="rowCount">
+        <option value="3">3</option><option value="4">4</option><option value="5" selected>5</option>
+        <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+      </select>
+    </label>
+    <label>TE je Feld/Reihe
+      <select id="teCount">
+        <option value="12" selected>12</option><option value="18">18</option><option value="24">24</option>
+      </select>
+    </label>
+    <label class="view-scale-label">Ansichtsgröße
+      <span class="view-scale-row"><input id="viewScale" type="range" min="60" max="250" step="5" value="100" /><output id="viewScaleValue" for="viewScale">100 %</output><button id="viewScaleReset" class="view-scale-reset" type="button" title="Ansicht auf 100 % zurücksetzen">100 %</button></span>
+    </label>
+    <label class="jump-toggle"><input id="autoJump" type="checkbox" checked /> Zur Auswahl springen</label>
+    <label>Einfügen als
+      <select id="insertStatus"><option value="existing" selected>Bestand</option><option value="new">Neu</option></select>
+    </label>
+    <button id="balancePhasesBtn" class="phase-balance-btn" type="button">Phasen automatisch ausgleichen</button>
+  </section>
+
+  <main class="layout">
+    <aside class="palette">
+      <h2>Geräte</h2>
+      <p class="hint">Gerät anklicken, dann auf die gewünschte Position setzen. Standardgeräte rasten in TE, Reihenklemmen in mm.</p>
+      <div id="paletteList"></div>
+    </aside>
+
+    <section class="workspace">
+      <div class="legend">
+        <span><i class="phase l1"></i>L1 braun</span>
+        <span><i class="phase l2"></i>L2 schwarz</span>
+        <span><i class="phase l3"></i>L3 grau</span>
+        <span><i class="phase n"></i>N blau</span>
+        <span id="selectionInfo">Kein Gerät ausgewählt</span>
+      </div>
+
+      <div class="workgrid">
+        <div class="board-pane">
+          <div id="board"></div>
+          <div id="statusBar"></div>
+        </div>
+
+        <section class="device-list-pane print-target">
+          <div class="section-title-row">
+            <h2>Elementliste</h2>
+            <span id="deviceCountBadge" class="badge">0</span>
+          </div>
+          <p class="hint no-print">Sortiert nach Feld → Reihe → Position. Klick auf Zeile oder Gerät koppelt beide Ansichten.</p>
+          <div id="printListTitle" class="print-heading">HV-Planer – Elementliste</div>
+          <div class="device-table-wrap">
+            <table class="device-table">
+              <thead>
+                <tr>
+                  <th>Pos.</th><th>Gerät</th><th>Phase</th><th>Bezeichnung</th><th>Eingang von</th><th>Ausgang zu</th>
+                </tr>
+              </thead>
+              <tbody id="deviceTableBody"></tbody>
+            </table>
+          </div>
+
+          <section class="zoom-editor no-print">
+            <div class="section-title-row">
+              <h2>Detailansicht Hutschiene</h2>
+              <span id="zoomRailTitle" class="badge">keine Auswahl</span>
+            </div>
+            <p class="hint">Klick auf ein Gerät wählt dessen Reihe. In der Detailansicht lassen sich besonders Reihenklemmen exakt und press aneinander verschieben.</p>
+            <div id="zoomRailWrap" class="zoom-rail-wrap">
+              <div id="zoomRail" class="zoom-rail empty">Bitte zuerst ein Gerät auswählen.</div>
+            </div>
+          </section>
+        </section>
+      </div>
+    </section>
+
+    <aside class="properties">
+      <h2>Eigenschaften</h2>
+      <div id="emptyProps" class="hint">Gerät im Plan oder in der Liste anklicken.</div>
+      <div id="propsForm" hidden>
+        <label>Bezeichnung<input id="propLabel" type="text" /></label>
+        <label>Technische Angabe<input id="propTech" type="text" /></label>
+        <label id="teWidthLabel">Breite (TE)<input id="propWidth" type="number" min="0.5" max="5" step="0.5" /><span id="customWidthControls" class="custom-width-controls" hidden><button id="widthMinusBtn" type="button">−0,5</button><button id="widthPlusBtn" type="button">+0,5</button></span></label>
+        <label id="mmWidthLabel" hidden>Breite (mm)<input id="propWidthMM" type="number" min="1" max="300" step="0.1" /></label>
+        <label>Status
+          <select id="propStatus"><option value="existing">Bestand</option><option value="new">Neu</option></select>
+        </label>
+        <label>RCD-Gruppe (leer = automatisch)<input id="propGroup" type="text" placeholder="A / B / C" /></label>
+        <label>Phase
+          <select id="propPhase">
+            <option value="auto">automatisch</option><option value="L1">L1</option><option value="L2">L2</option>
+            <option value="L3">L3</option><option value="3P">3-phasig</option><option value="N">N</option><option value="none">keine</option>
+          </select>
+        </label>
+        <div class="subhead">Logische Verdrahtung</div>
+        <label id="singleInputLabel">Eingang von<select id="propInputFrom"></select></label>
+        <div id="changeInputs" class="change-inputs" hidden></div>
+        <div id="neutralBinding" class="neutral-binding" hidden></div>
+        <div id="outputTargets" class="output-box"></div>
+        <div class="prop-actions">
+          <button id="duplicateBtn">Duplizieren</button>
+          <button id="deleteBtn" class="danger">Löschen</button>
+        </div>
+      </div>
+
+      <h2 class="summary-title">Auswertung</h2>
+      <div id="summary"></div>
+    </aside>
+  </main>
+
+  <div id="sourcesModal" class="schematic-modal" hidden>
+    <div class="schematic-dialog sources-dialog">
+      <div class="schematic-toolbar">
+        <div><h2>Externe Quellen</h2><span class="hint">Logische Einspeisungen außerhalb des Verteilers. Sie belegen keine TE und können mit Geräteeingängen verknüpft werden.</span></div>
+        <div class="schematic-actions"><button id="addSourceBtn" type="button">+ Quelle</button><button id="closeSourcesBtn" type="button">Schließen</button></div>
+      </div>
+      <div id="sourcesList" class="sources-list"></div>
+      <p class="hint sources-note">Jede Quelle stellt L1, L2, L3, N und PE als logische Potentiale bereit. Mehrere unabhängige Zuleitungen in einem Verteiler sind möglich.</p>
+    </div>
+  </div>
+
+  <div id="schematicModal" class="schematic-modal" hidden>
+    <div class="schematic-dialog">
+      <div class="schematic-toolbar no-schematic-print">
+        <div>
+          <h2>Logikplan</h2>
+          <span class="hint">Automatisch aus der logischen Verdrahtung erzeugt.</span>
+        </div>
+        <div class="schematic-actions">
+          <button id="printSchematicBtn">Logikplan drucken</button>
+          <button id="closeSchematicBtn">Schließen</button>
+        </div>
+      </div>
+      <div id="schematicContent" class="schematic-content"></div>
+    </div>
+  </div>
+
+  <div id="circuitModal" class="schematic-modal" hidden>
+    <div class="schematic-dialog circuit-dialog">
+      <div class="schematic-toolbar no-circuit-print">
+        <div>
+          <h2>Stromlaufplan</h2>
+          <span class="hint">Potentialorientierte Darstellung mit L1/L2/L3/N/PE, Schutzgeräten und Klemmen.</span>
+        </div>
+        <div class="schematic-actions">
+          <button id="printCircuitBtn">Stromlaufplan drucken</button>
+          <button id="closeCircuitBtn">Schließen</button>
+        </div>
+      </div>
+      <div id="circuitContent" class="circuit-content"></div>
+    </div>
+  </div>
+
+  <div id="bomModal" class="schematic-modal" hidden>
+    <div class="schematic-dialog bom-dialog">
+      <div class="schematic-toolbar no-bom-print">
+        <div>
+          <h2>Stückliste</h2>
+          <span class="hint">Herstellerneutrale Bestellübersicht aus dem aktuellen Verteilerplan.</span>
+        </div>
+        <div class="schematic-actions">
+          <label class="bom-new-toggle"><input id="bomOnlyNew" type="checkbox" /> nur Neu</label>
+          <button id="bomCsvBtn">CSV exportieren</button>
+          <button id="printBomBtn">Stückliste drucken</button>
+          <button id="closeBomBtn">Schließen</button>
+        </div>
+      </div>
+      <div id="bomContent" class="bom-content"></div>
+    </div>
+  </div>
+
+
+  <div id="checkModal" class="schematic-modal" hidden>
+    <div class="schematic-dialog check-dialog">
+      <div class="schematic-toolbar">
+        <div><h2>Plausibilitätscheck</h2><span class="hint">Findet offene oder auffällige Modellstellen – keine Normprüfung.</span></div>
+        <div class="schematic-actions"><button id="closeCheckBtn">Schließen</button></div>
+      </div>
+      <div id="checkContent" class="check-content"></div>
+    </div>
+  </div>
+
+  <div id="plansModal" class="schematic-modal" hidden>
+    <div class="schematic-dialog plans-dialog">
+      <div class="schematic-toolbar">
+        <div><h2>Pläne auf dem Server</h2><span class="hint">Änderungen werden automatisch gespeichert. Der Planname ist das Feld „Projektname“.</span></div>
+        <div class="schematic-actions"><button id="plansNewBtn" type="button">+ Neuer Plan</button><button id="plansCloseBtn" type="button">Schließen</button></div>
+      </div>
+      <div id="plansList" class="plans-list"></div>
+    </div>
+  </div>
+
+  <div id="helpModal" class="about-modal" hidden>
+    <div class="about-dialog help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <button id="closeHelpBtn" class="about-close" aria-label="Anleitung schließen">×</button>
+      <div class="about-brand">?</div>
+      <h2 id="helpTitle">Hilfe / Anleitung</h2>
+      <p class="about-lead">Kurzreferenz für die wichtigsten Funktionen des HV-Planers. Die ausführliche Anleitung liegt zusätzlich als <strong>ANLEITUNG.md</strong> im Programmordner.</p>
+      <div class="help-content">
+        <h3>1. Schnellstart</h3>
+        <p>Projektname, Felder, Reihen und TE festlegen. Danach links ein Gerät auswählen und im gewünschten Feld auf der Hutschiene platzieren.</p>
+        <h3>2. Ansicht</h3>
+        <p>Mit <strong>Ansichtsgröße</strong> lässt sich die Darstellung von 60–250 % skalieren. Der <strong>100-%-Button</strong> setzt die Ansicht sofort zurück. <strong>Zur Auswahl springen</strong> kann deaktiviert werden, wenn beim Platzieren die aktuelle Bildschirmposition erhalten bleiben soll.</p>
+        <h3>3. Stromschienen je Reihe</h3>
+        <p>Jede Reihe kann unabhängig auf <strong>Keine</strong>, <strong>1-phasig</strong> oder <strong>3-phasig</strong> gestellt werden. Nur aktivierte Stromschienen beeinflussen die automatische Phasenzuordnung.</p>
+        <h3>4. Geräte bearbeiten</h3>
+        <p>Ein Gerät anklicken, um Bezeichnung, technische Angabe, Breite, Status, RCD-Gruppe, Phase und logische Verdrahtung rechts zu bearbeiten. <strong>Neu</strong> wird im Plan grün markiert. Benutzerdefinierte Geräte lassen sich in 0,5-TE-Schritten anpassen.</p>
+        <p><strong>Rückgängig/Wiederholen</strong> funktioniert auch per Strg+Z / Strg+Y. Strg+D dupliziert die aktuelle Auswahl.</p>
+        <h3>5. Logische Verdrahtung</h3>
+        <p>Über <strong>Quellen</strong> lassen sich beliebig viele externe Einspeisungen wie HAK/EVU, ein vorgelagerter Zählerschrank oder eine zweite Zuleitung definieren. Sie belegen keine TE und stehen an den Geräteeingängen als L1/L2/L3/N/PE zur Auswahl.</p>
+        <p>Eingänge und Ausgänge werden über die Eigenschaften verbunden. HLAK, RCD, LS und Reihenklemmen geben ihre Leiter- bzw. Phaseninformation logisch weiter. N und PE werden getrennt von den Außenleitern behandelt.</p>
+        <h3>6. Detailansicht Hutschiene</h3>
+        <p>Die Detailansicht eignet sich besonders zum exakten Setzen und Verschieben von Reihenklemmen. Die Hauptansicht und die Elementliste bleiben miteinander gekoppelt.</p>
+        <h3>7. Auswertungen</h3>
+        <p><strong>Elementliste</strong>, <strong>Stückliste</strong>, <strong>Logikplan</strong> und <strong>Stromlaufplan</strong> werden aus dem aktuellen Projekt erzeugt. Der Stromlaufplan bildet L1/L2/L3/N/PE getrennt und potentialorientiert ab.</p>
+        <h3>8. Speichern und Laden</h3>
+        <p>Projekte werden als JSON-Datei gespeichert. Projektname, Geräte, Zuordnungen und Ansichtsoptionen werden mitgesichert.</p>
+        <h3>9. Bestandsanlagen</h3>
+        <p>Vorhandene Verteilungen lassen sich Feld für Feld nachbilden. Über <strong>Einfügen als</strong> kann zwischen Bestand und Neu gewechselt werden. Neue Geräte werden grün gekennzeichnet; die Stückliste lässt sich auf <strong>nur Neu</strong> filtern.</p>
+        <h3>10. Plausibilitätscheck</h3>
+        <p>Der Check sucht nach offenen Klemmen, fehlenden oder ungültigen Verknüpfungen und ungenutzten Schutzgeräte-Ausgängen. Er ist ausdrücklich keine Norm- oder Ausführungsprüfung.</p>
+        <h3>10. Wichtig</h3>
+        <p>Der HV-Planer ist eine mechanische Planungshilfe und logische Dokumentation. Er führt keine automatische Norm- oder Ausführungsprüfung durch.</p>
+      </div>
+      <p class="about-footnote"><a href="ANLEITUNG.md" target="_blank" rel="noopener noreferrer">Ausführliche Anleitung öffnen</a></p>
+    </div>
+  </div>
+
+  <div id="aboutModal" class="about-modal" hidden>
+    <div class="about-dialog" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <button id="closeAboutBtn" class="about-close" aria-label="About schließen">×</button>
+      <div class="about-brand">HV</div>
+      <h2 id="aboutTitle">HV-Planer V6.66</h2>
+      <p class="about-lead">Herstellerunabhängiger Verteilerplaner für mechanische Übersicht, logische Verschaltung und Dokumentation – komplett lokal im Browser.</p>
+      <div class="about-meta">
+        <div><span>Entwickelt von</span><strong>Marcel</strong></div>
+        <div><span>Lizenz</span><strong>Kostenlos nutzbar</strong></div>
+        <div><span>Daten</span><strong>Bleiben lokal im Browser</strong></div>
+      </div>
+      <div class="coffee-box">
+        <div class="coffee-icon">☕</div>
+        <div>
+          <h3>Eine Tasse Kaffee spendieren</h3>
+          <p>Wenn dir der HV-Planer Zeit, Arbeit oder vielleicht sogar einen Fehlkauf erspart hat, freue ich mich über einen Kaffee.</p>
+        </div>
+      </div>
+      <a class="coffee-button" href="https://paypal.me/selfi24" target="_blank" rel="noopener noreferrer">☕ Kaffee spendieren via PayPal</a>
+      <div class="paypal-handle">PayPal: @selfi24</div>
+      <p class="about-footnote"><a href="RELEASE-NOTES.md" target="_blank" rel="noopener noreferrer">Release-Notes V6.66 öffnen</a> · <a href="CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog</a></p>
+      <p class="about-footnote">Freiwillig, ohne Gegenleistung. Der HV-Planer bleibt unabhängig davon vollständig nutzbar.</p>
+    </div>
+  </div>
+
+  <footer>
+    <small>V6.66 – mechanische Planungshilfe und logische Dokumentation, keine automatische Normprüfung.</small>
+  </footer>
+  <script src="components.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

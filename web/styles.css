@@ -1,0 +1,1674 @@
+:root{
+  --bg:#f4f5f7;--panel:#fff;--line:#c9ced6;--text:#20242a;--muted:#6d7480;--accent:#2f5f9f;--danger:#a83232;
+  --l1:#7a4b2a;--l2:#111;--l3:#8a8f98;--n:#2f6fd0;--tew:48px
+}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,select,input{font:inherit} button,.file-btn{border:1px solid #aeb4bd;background:#fff;color:var(--text);border-radius:7px;padding:8px 11px;cursor:pointer}
+button:hover,.file-btn:hover{background:#f0f2f5} button.danger{color:var(--danger);border-color:#cf9a9a}
+.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:18px 22px;background:#1f2937;color:#fff}
+.topbar h1{margin:0 0 3px;font-size:23px}.topbar p{margin:0;color:#d6dae0;font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.config{display:flex;gap:18px;align-items:end;flex-wrap:wrap;padding:12px 18px;background:#fff;border-bottom:1px solid var(--line)}
+.config label,.properties label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}.config .check{flex-direction:row;align-items:center;padding-bottom:8px}.view-scale-label{min-width:220px}.view-scale-row{display:flex;align-items:center;gap:9px}.view-scale-row input[type="range"]{width:170px;accent-color:var(--accent)}.view-scale-row output{min-width:48px;text-align:right;font-size:12px;font-weight:800;color:#4f5863;font-variant-numeric:tabular-nums}
+.config select,.properties input,.properties select{min-width:120px;padding:7px 8px;border:1px solid #bfc5cd;border-radius:6px;background:#fff}
+.layout{display:grid;grid-template-columns:220px minmax(0,1fr) 270px;gap:12px;padding:12px;align-items:start}
+.palette,.properties,.workspace{background:var(--panel);border:1px solid var(--line);border-radius:10px}.palette,.properties{padding:14px}.workspace{padding:12px;overflow:auto}
+h2{font-size:16px;margin:0 0 10px}.hint{color:var(--muted);font-size:12px;line-height:1.4}
+#paletteList{display:grid;gap:8px;margin-top:12px}.palette-category{border:1px solid #cfd5dc;border-radius:8px;background:#f7f8fa;overflow:hidden}.palette-category>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;font-weight:800;cursor:pointer;user-select:none;background:#eef1f4}.palette-category>summary:hover{background:#e7ebef}.palette-category>summary::marker{color:#69727d}.category-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:20px;padding:0 6px;border-radius:999px;background:#d9dee5;color:#4f5863;font-size:11px}.palette-category-items{display:grid;gap:7px;padding:8px}.palette-item{border:1px solid #bac1ca;border-radius:7px;padding:9px;background:#f9fafb;cursor:pointer}
+.palette-item strong{display:block}.palette-item small{color:var(--muted)}.palette-item.active{outline:2px solid var(--accent);background:#eef4fb}
+.legend{display:flex;gap:14px;align-items:center;font-size:12px;margin-bottom:10px;flex-wrap:wrap}.phase{display:inline-block;width:14px;height:8px;margin-right:4px;border-radius:2px}
+.phase.l1{background:var(--l1)}.phase.l2{background:var(--l2)}.phase.l3{background:var(--l3)}.phase.n{background:var(--n)}#selectionInfo{margin-left:auto;color:var(--muted)}
+.workgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}.board-pane{min-width:0;overflow-x:auto;padding-bottom:2px}.board{display:flex;gap:18px;align-items:stretch;min-width:max-content}.device-list-pane{width:100%}
+.field{background:#e7e9ed;border:2px solid #868e99;border-radius:8px;padding:10px}.field-title{font-weight:700;font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;gap:12px}
+.rail-row{margin-bottom:13px}.rail-label{font-size:11px;color:#5d6570;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:8px}.rail-label-actions{display:flex;align-items:center;gap:10px}.rail-label-actions label{display:flex;flex-direction:row;align-items:center;gap:5px;font-weight:600}.row-phase-select,.row-rail-select{font:inherit;padding:1px 20px 1px 5px;border:1px solid #c8cdd4;border-radius:5px;background:#fff;color:#303740}.rail-wrap{position:relative}
+.phase-strip{display:grid;height:7px;margin-top:3px;border-radius:3px;overflow:hidden}.phase-strip.placeholder{visibility:hidden}.phase-cell.l1{background:var(--l1)}.phase-cell.l2{background:var(--l2)}.phase-cell.l3{background:var(--l3)}.phase-cell.n{background:var(--n)}
+.rail{position:relative;height:72px;background:repeating-linear-gradient(to right,#fff 0,#fff calc(var(--tew) - 1px),#d8dce1 calc(var(--tew) - 1px),#d8dce1 var(--tew));border:1px solid #9ca3ad;border-radius:4px;overflow:hidden}
+.rail:after{content:"";position:absolute;left:0;right:0;top:33px;height:6px;background:#9aa0a8;opacity:.55;pointer-events:none}
+.device{position:absolute;top:4px;height:62px;border:1px solid #58616d;border-radius:4px;background:#f7f7f7;z-index:2;padding:4px 5px;cursor:grab;overflow:hidden;user-select:none}
+.device.terminal{padding:2px;background:#f1f1f1;min-width:5px}.device.selected{outline:3px solid var(--accent);outline-offset:1px}
+.device .tech{font-weight:800;font-size:13px;white-space:nowrap}.device.terminal .tech{font-size:8px;writing-mode:vertical-rl;transform:rotate(180deg);line-height:1}
+.device .label{font-size:11px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.device.terminal .label,.device.terminal .meta,.device.terminal .phase-dot{display:none}
+.device .meta{font-size:10px;color:#59606a;white-space:nowrap}.device .phase-dot{width:7px;height:7px;border-radius:50%;position:absolute;right:4px;top:4px}
+.device .phase-dot.L1{background:var(--l1)}.device .phase-dot.L2{background:var(--l2)}.device .phase-dot.L3{background:var(--l3)}.device .phase-dot.N{background:var(--n)}
+.device .phase-dot.P3{background:linear-gradient(90deg,var(--l1) 0 33%,var(--l2) 33% 66%,var(--l3) 66% 100%);width:14px;border-radius:2px}
+#statusBar{margin-top:10px;font-size:12px;color:var(--muted)}
+.device-list-pane{border:1px solid #d6dae0;border-radius:9px;padding:10px;min-width:0;background:#fafbfc}.section-title-row{display:flex;align-items:center;gap:8px}.section-title-row h2{margin:0}
+.badge{display:inline-flex;min-width:24px;height:24px;padding:0 7px;align-items:center;justify-content:center;border-radius:999px;background:#e8ebef;font-size:12px;font-weight:700}.print-heading{display:none;font-size:18px;font-weight:700;margin-bottom:10px}
+.device-table-wrap{overflow:auto;max-height:720px;border:1px solid #d2d7dd;border-radius:7px;background:#fff}.device-table{width:100%;border-collapse:collapse;font-size:12px}
+.device-table th,.device-table td{border-bottom:1px solid #e0e3e7;padding:6px 7px;text-align:left;vertical-align:middle}.device-table th{position:sticky;top:0;z-index:2;background:#eef1f4;font-size:11px}
+.device-table tbody tr{cursor:pointer}.device-table tbody tr:hover{background:#f4f6f8}.device-table tbody tr.selected{background:#d9dde2}.device-table .position{white-space:nowrap;color:#5d6570;font-variant-numeric:tabular-nums}
+.device-table .device-name{min-width:110px}.device-table .phase-cell-text{width:54px;white-space:nowrap;font-weight:700}.device-table .connection{min-width:120px;color:#525a64;font-size:11px}
+.device-table input{width:100%;min-width:150px;padding:5px 6px;border:1px solid #c2c8cf;border-radius:5px;background:#fff}
+.properties #propsForm{display:grid;gap:10px}.subhead{margin-top:4px;padding-top:10px;border-top:1px solid #dde1e6;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#555d68}
+.output-box{min-height:38px;padding:8px;border:1px solid #d0d5dc;border-radius:6px;background:#f9fafb;font-size:12px;color:#555d68}.output-box ul{margin:6px 0 0 18px;padding:0}
+.prop-actions{display:flex;gap:7px}.summary-title{margin-top:20px}.summary-grid{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-size:12px}.summary-grid strong{text-align:right}
+.summary-phase{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}.summary-phase div{border:1px solid #c8cdd4;border-radius:6px;padding:6px;text-align:center;font-size:11px}
+footer{padding:0 16px 16px;color:var(--muted)}
+@media(max-width:1550px){.layout{grid-template-columns:200px minmax(0,1fr)}.properties{grid-column:1/-1}}
+@media(max-width:1150px){.workgrid{grid-template-columns:1fr}.device-list-pane{min-width:0}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.palette,.properties{grid-column:auto}.topbar{align-items:flex-start;flex-direction:column}}
+
+/* V6.14: Auf WQHD und breiter bewusst groessere Planansicht. */
+@media(min-width:2200px){
+  :root{--tew:56px}
+  .rail{height:80px}
+  .rail:after{top:37px}
+  .device{height:70px}
+  .device .tech{font-size:14px}
+  .device .label{font-size:12px}
+  .device .meta{font-size:11px}
+  .field-title{font-size:14px}
+}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body.print-list-mode *{visibility:hidden!important}
+  body.print-list-mode .print-target,body.print-list-mode .print-target *{visibility:visible!important}
+  body.print-list-mode .print-target{position:absolute;left:0;top:0;width:100%;border:0;padding:0;background:#fff}
+  body.print-list-mode .print-heading{display:block}
+  body.print-list-mode .no-print,body.print-list-mode .badge{display:none!important}
+  body.print-list-mode .device-table-wrap{max-height:none;overflow:visible;border:0}
+  body.print-list-mode .device-table{font-size:10pt}
+  body.print-list-mode .device-table th{position:static;background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.print-list-mode .device-table input{border:0;padding:0;min-width:0;font-size:inherit}
+  body.print-list-mode .device-table tbody tr.selected{background:transparent!important}
+}
+
+
+/* V4.6 Detailansicht der aktuell ausgewählten Hutschiene */
+.zoom-editor{
+  margin-top:14px;
+  border-top:1px solid #d7dbe1;
+  padding-top:12px;
+}
+.zoom-rail-wrap{
+  overflow-x:auto;
+  overflow-y:hidden;
+  border:1px solid #c8ced6;
+  border-radius:8px;
+  background:#fff;
+  padding:12px;
+}
+.zoom-rail{
+  position:relative;
+  height:110px;
+  min-width:0;
+  border:1px solid #8f97a2;
+  border-radius:5px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      #fff 0,
+      #fff 11px,
+      #eef0f3 11px,
+      #eef0f3 12px
+    );
+}
+.zoom-rail.empty{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#777f89;
+  font-size:12px;
+}
+.zoom-rail::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;
+  top:50px;
+  height:8px;
+  background:#989fa8;
+  opacity:.45;
+  pointer-events:none;
+}
+.zoom-device{
+  position:absolute;
+  top:12px;
+  height:82px;
+  border:1px solid #555f6a;
+  border-radius:4px;
+  background:#fafafa;
+  z-index:2;
+  padding:5px;
+  cursor:grab;
+  user-select:none;
+  overflow:hidden;
+}
+.zoom-device.selected{
+  outline:3px solid var(--accent);
+  outline-offset:1px;
+}
+.zoom-device.terminal{
+  min-width:9px;
+  padding:2px;
+  background:#f1f1f1;
+}
+.zoom-device .z-tech{
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.zoom-device .z-label{
+  margin-top:3px;
+  font-size:11px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.zoom-device .z-pos{
+  position:absolute;
+  left:4px;
+  bottom:3px;
+  font-size:9px;
+  color:#646c76;
+  white-space:nowrap;
+}
+.zoom-device.terminal .z-tech{
+  font-size:8px;
+  writing-mode:vertical-rl;
+  transform:rotate(180deg);
+}
+.zoom-device.terminal .z-label{
+  display:none;
+}
+.zoom-ruler{
+  position:absolute;
+  left:0;right:0;
+  top:0;
+  height:9px;
+  pointer-events:none;
+}
+.zoom-ruler-mark{
+  position:absolute;
+  top:0;
+  width:1px;
+  height:6px;
+  background:#777;
+}
+
+
+/* ===== V5 Stromlaufplan ===== */
+.schematic-modal{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  background:rgba(20,24,30,.55);
+  padding:22px;
+  overflow:auto;
+}
+.schematic-dialog{
+  max-width:1500px;
+  margin:0 auto;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 18px 60px rgba(0,0,0,.25);
+  min-height:70vh;
+}
+.schematic-toolbar{
+  position:sticky;
+  top:0;
+  z-index:5;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  padding:14px 18px;
+  background:#fff;
+  border-bottom:1px solid #d6dbe2;
+  border-radius:12px 12px 0 0;
+}
+.schematic-toolbar h2{
+  margin:0 0 2px;
+  font-size:19px;
+}
+.schematic-actions{
+  display:flex;
+  gap:8px;
+}
+.schematic-content{
+  padding:18px;
+}
+.schematic-title{
+  display:none;
+  font-size:22px;
+  font-weight:800;
+  margin:0 0 14px;
+}
+.schematic-group{
+  border:1px solid #c7cdd5;
+  border-radius:10px;
+  margin-bottom:18px;
+  overflow:hidden;
+  break-inside:avoid;
+}
+.schematic-group-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:9px 12px;
+  background:#eef1f4;
+  border-bottom:1px solid #cfd4db;
+}
+.schematic-group-header strong{
+  font-size:15px;
+}
+.schematic-group-header .neutral-note{
+  font-size:11px;
+  color:#2f6fd0;
+  font-weight:700;
+}
+.schematic-root{
+  padding:12px;
+}
+.schematic-root + .schematic-root{
+  border-top:1px dashed #cfd4db;
+}
+.schematic-root-device{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+}
+.schematic-branches{
+  display:grid;
+  gap:7px;
+}
+.schematic-path{
+  display:flex;
+  align-items:stretch;
+  gap:0;
+  overflow-x:auto;
+  padding:2px 0;
+}
+.schematic-node{
+  min-width:132px;
+  max-width:190px;
+  border:1px solid #69727d;
+  border-radius:6px;
+  background:#fafafa;
+  padding:6px 8px;
+  position:relative;
+  flex:0 0 auto;
+}
+.schematic-node.rcd{
+  border-width:2px;
+  background:#f2f4f6;
+}
+.schematic-node.terminal{
+  background:#f8f8f8;
+  border-style:double;
+}
+.schematic-node .node-tech{
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.schematic-node .node-label{
+  font-size:11px;
+  margin-top:2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.schematic-node .node-meta{
+  font-size:9px;
+  color:#626a74;
+  margin-top:3px;
+}
+.schematic-arrow{
+  width:48px;
+  min-width:48px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  font-size:9px;
+  font-weight:800;
+}
+.schematic-arrow::before{
+  content:"";
+  width:100%;
+  height:2px;
+  background:#5d6570;
+  position:absolute;
+  top:50%;
+  left:0;
+}
+.schematic-arrow::after{
+  content:"";
+  position:absolute;
+  right:0;
+  top:calc(50% - 4px);
+  border-left:7px solid #5d6570;
+  border-top:4px solid transparent;
+  border-bottom:4px solid transparent;
+}
+.schematic-arrow span{
+  position:relative;
+  z-index:1;
+  background:#fff;
+  padding:0 3px;
+}
+.schematic-arrow.phase-L1::before{background:var(--l1)}
+.schematic-arrow.phase-L1::after{border-left-color:var(--l1)}
+.schematic-arrow.phase-L2::before{background:var(--l2)}
+.schematic-arrow.phase-L2::after{border-left-color:var(--l2)}
+.schematic-arrow.phase-L3::before{background:var(--l3)}
+.schematic-arrow.phase-L3::after{border-left-color:var(--l3)}
+.schematic-arrow.phase-N::before{background:var(--n)}
+.schematic-arrow.phase-N::after{border-left-color:var(--n)}
+.schematic-phase-tag{
+  display:inline-block;
+  border-radius:4px;
+  padding:1px 5px;
+  font-size:9px;
+  font-weight:800;
+  color:#fff;
+  margin-left:4px;
+}
+.schematic-phase-tag.L1{background:var(--l1)}
+.schematic-phase-tag.L2{background:var(--l2)}
+.schematic-phase-tag.L3{background:var(--l3)}
+.schematic-phase-tag.N{background:var(--n)}
+.schematic-phase-tag.P3{
+  background:linear-gradient(90deg,var(--l1) 0 33%,var(--l2) 33% 66%,var(--l3) 66% 100%);
+}
+.schematic-neutral-bar{
+  margin:12px 0 2px;
+  padding:6px 9px;
+  border-left:5px solid var(--n);
+  background:#f2f6fd;
+  font-size:10px;
+  color:#274d86;
+}
+.schematic-warning{
+  border:1px solid #d6a94a;
+  background:#fff9e9;
+  border-radius:7px;
+  padding:8px 10px;
+  font-size:11px;
+  margin-top:8px;
+}
+.schematic-empty{
+  padding:30px;
+  text-align:center;
+  color:#6b737d;
+}
+
+@media print{
+  body.print-schematic-mode *{
+    visibility:hidden !important;
+  }
+  body.print-schematic-mode #schematicModal,
+  body.print-schematic-mode #schematicModal *{
+    visibility:visible !important;
+  }
+  body.print-schematic-mode #schematicModal{
+    position:absolute;
+    inset:0;
+    background:#fff;
+    padding:0;
+    overflow:visible;
+  }
+  body.print-schematic-mode .schematic-dialog{
+    box-shadow:none;
+    max-width:none;
+    min-height:0;
+  }
+  body.print-schematic-mode .no-schematic-print{
+    display:none !important;
+  }
+  body.print-schematic-mode .schematic-content{
+    padding:0;
+  }
+  body.print-schematic-mode .schematic-title{
+    display:block;
+  }
+  body.print-schematic-mode .schematic-path{
+    overflow:visible;
+  }
+  body.print-schematic-mode .schematic-group{
+    break-inside:avoid;
+  }
+}
+
+
+/* V5.1: Platzhalterstufe für bündige Endklemmen */
+.schematic-spacer-node{
+  width:132px;
+  min-width:132px;
+  flex:0 0 132px;
+  border:0;
+  background:transparent;
+}
+@media print{
+  body.print-schematic-mode .schematic-spacer-node{
+    display:block;
+  }
+}
+
+
+/* ===== V6 echter Stromlaufplan ===== */
+.circuit-dialog{
+  max-width:1600px;
+}
+.circuit-content{
+  padding:18px;
+  overflow:auto;
+}
+.circuit-print-title{
+  display:none;
+  font-size:22px;
+  font-weight:800;
+  margin:0 0 14px;
+}
+.circuit-sheet{
+  min-width:1180px;
+  border:1px solid #7f8791;
+  background:#fff;
+  padding:14px 14px 20px;
+  margin-bottom:18px;
+  break-inside:avoid;
+}
+.circuit-sheet-header{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:center;
+  padding-bottom:8px;
+  margin-bottom:8px;
+  border-bottom:1px solid #b8bec6;
+}
+.circuit-sheet-header strong{
+  font-size:15px;
+}
+.circuit-sheet-header span{
+  font-size:11px;
+  color:#555d66;
+}
+.circuit-grid{
+  display:grid;
+  grid-template-columns:86px minmax(1030px,1fr);
+  gap:0;
+}
+.circuit-labels{
+  position:relative;
+  min-height:660px;
+  padding-top:4px;
+}
+.circuit-label{
+  position:absolute;
+  right:10px;
+  font-size:11px;
+  font-weight:800;
+}
+.circuit-label.L1{top:13px;color:var(--l1)}
+.circuit-label.L2{top:39px;color:var(--l2)}
+.circuit-label.L3{top:65px;color:#666}
+.circuit-label.N{top:91px;color:var(--n)}
+.circuit-label.PE{bottom:74px;color:#4d7b52}
+
+.circuit-canvas{
+  position:relative;
+  min-height:660px;
+  overflow:visible;
+}
+.bus{
+  position:absolute;
+  left:0;
+  right:0;
+  height:2px;
+  z-index:1;
+}
+.bus.L1{top:18px;background:var(--l1)}
+.bus.L2{top:44px;background:var(--l2)}
+.bus.L3{top:70px;background:var(--l3)}
+.bus.N{top:96px;border-top:2px dashed var(--n);height:0}
+.bus.PE{bottom:82px;border-top:2px dash-dot #5e8f63;height:0}
+
+.rcd-block{
+  position:absolute;
+  left:22px;
+  top:126px;
+  width:124px;
+  border:1px solid #555f69;
+  border-radius:4px;
+  background:#fafafa;
+  padding:7px 8px;
+  z-index:3;
+}
+.rcd-block .tech{
+  font-size:12px;
+  font-weight:800;
+}
+.rcd-block .name{
+  font-size:10px;
+  margin-top:2px;
+}
+.rcd-block .meta{
+  font-size:9px;
+  color:#656d77;
+  margin-top:4px;
+}
+
+.rcd-wire{
+  position:absolute;
+  width:1px;
+  background:#606871;
+  z-index:2;
+}
+.rcd-wire.L1{left:40px;top:18px;height:109px;background:var(--l1)}
+.rcd-wire.L2{left:65px;top:44px;height:83px;background:var(--l2)}
+.rcd-wire.L3{left:90px;top:70px;height:57px;background:var(--l3)}
+.rcd-wire.N{left:115px;top:96px;height:31px;background:var(--n)}
+
+.circuit-columns{
+  position:absolute;
+  left:180px;
+  top:118px;
+  right:0;
+  bottom:0;
+  display:flex;
+  gap:26px;
+  align-items:flex-start;
+}
+.circuit-column{
+  position:relative;
+  width:150px;
+  min-width:150px;
+  height:470px;
+}
+.circuit-column .phase-feed{
+  position:absolute;
+  left:22px;
+  top:0;
+  width:1px;
+  height:80px;
+  background:#666;
+}
+.circuit-column .phase-feed.L1{background:var(--l1)}
+.circuit-column .phase-feed.L2{background:var(--l2)}
+.circuit-column .phase-feed.L3{background:var(--l3)}
+.circuit-column .phase-feed.P3{
+  width:3px;
+  background:linear-gradient(to right,var(--l1) 0 33%,var(--l2) 33% 66%,var(--l3) 66% 100%);
+}
+.circuit-column .feed-horizontal{
+  position:absolute;
+  top:-1px;
+  left:-160px;
+  right:126px;
+  height:1px;
+  background:#666;
+}
+.circuit-column .device-box{
+  position:absolute;
+  left:0;
+  top:82px;
+  width:112px;
+  border:1px solid #606a75;
+  border-radius:4px;
+  background:#fff;
+  padding:6px 7px;
+  z-index:3;
+}
+.circuit-column .device-box .tech{
+  font-size:11px;
+  font-weight:800;
+}
+.circuit-column .device-box .label{
+  font-size:10px;
+  margin-top:2px;
+}
+.circuit-column .device-box .meta{
+  font-size:9px;
+  color:#6a727b;
+  margin-top:3px;
+}
+.circuit-column .wire-down{
+  position:absolute;
+  left:22px;
+  top:120px;
+  width:1px;
+  height:266px;
+  background:#676f78;
+}
+.circuit-column .wire-down.L1{background:var(--l1)}
+.circuit-column .wire-down.L2{background:var(--l2)}
+.circuit-column .wire-down.L3{background:var(--l3)}
+.circuit-column .wire-down.P3{
+  width:3px;
+  background:linear-gradient(to right,var(--l1) 0 33%,var(--l2) 33% 66%,var(--l3) 66% 100%);
+}
+.circuit-column .intermediate-box{
+  position:absolute;
+  left:0;
+  top:196px;
+  width:112px;
+  border:1px solid #606a75;
+  border-radius:4px;
+  background:#fff;
+  padding:6px 7px;
+  z-index:3;
+}
+.circuit-column .intermediate-box .tech{font-size:10px;font-weight:800}
+.circuit-column .intermediate-box .label{font-size:9px;margin-top:2px}
+.circuit-column.has-intermediate .wire-down{
+  top:234px;
+  height:152px;
+}
+.circuit-column .n-tap{
+  position:absolute;
+  left:68px;
+  top:-22px;
+  width:1px;
+  height:408px;
+  border-left:1px dashed var(--n);
+}
+.circuit-column .terminal-block{
+  position:absolute;
+  left:0;
+  top:386px;
+  width:118px;
+  min-height:52px;
+  border:1px solid #5d6670;
+  background:#fff;
+  z-index:3;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+}
+.circuit-column .terminal-block .tcell{
+  border-right:1px solid #8a9199;
+  padding:4px 2px;
+  text-align:center;
+  font-size:8px;
+}
+.circuit-column .terminal-block .tcell:last-child{border-right:0}
+.circuit-column .terminal-block .tname{
+  grid-column:1/-1;
+  border-top:1px solid #8a9199;
+  padding:3px 4px;
+  font-size:9px;
+  font-weight:700;
+}
+.circuit-column .pe-tap{
+  position:absolute;
+  left:94px;
+  top:386px;
+  width:1px;
+  height:52px;
+  border-left:1px solid #5e8f63;
+}
+.circuit-column .pe-join{
+  position:absolute;
+  left:94px;
+  top:438px;
+  width:1px;
+  height:28px;
+  border-left:1px solid #5e8f63;
+}
+.circuit-column .pe-join::after{
+  content:"";
+  position:absolute;
+  left:-2px;
+  bottom:-3px;
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#5e8f63;
+}
+.circuit-note{
+  margin-top:8px;
+  font-size:10px;
+  color:#5f6770;
+}
+.circuit-legend{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  font-size:10px;
+  margin-bottom:10px;
+}
+.circuit-legend span{display:inline-flex;align-items:center;gap:4px}
+.circuit-legend i{display:inline-block;width:18px;height:2px}
+.circuit-legend .l1{background:var(--l1)}
+.circuit-legend .l2{background:var(--l2)}
+.circuit-legend .l3{background:var(--l3)}
+.circuit-legend .n{border-top:2px dashed var(--n);height:0}
+.circuit-legend .pe{border-top:2px dash-dot #5e8f63;height:0}
+
+@media print{
+  body.print-circuit-mode *{
+    visibility:hidden !important;
+  }
+  body.print-circuit-mode #circuitModal,
+  body.print-circuit-mode #circuitModal *{
+    visibility:visible !important;
+  }
+  body.print-circuit-mode #circuitModal{
+    position:absolute;
+    inset:0;
+    background:#fff;
+    padding:0;
+    overflow:visible;
+  }
+  body.print-circuit-mode .schematic-dialog{
+    box-shadow:none;
+    max-width:none;
+    min-height:0;
+  }
+  body.print-circuit-mode .no-circuit-print{
+    display:none !important;
+  }
+  body.print-circuit-mode .circuit-content{
+    padding:0;
+  }
+  body.print-circuit-mode .circuit-print-title{
+    display:block;
+  }
+  body.print-circuit-mode .circuit-sheet{
+    page-break-after:always;
+  }
+  body.print-circuit-mode .circuit-sheet:last-child{
+    page-break-after:auto;
+  }
+}
+
+
+/* ===== V6.1 normnahe Symbole im Stromlaufplan ===== */
+.circuit-symbol-wrap{
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+}
+.circuit-symbol{
+  width:36px;
+  min-width:36px;
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.circuit-symbol svg{
+  width:34px;
+  height:44px;
+  overflow:visible;
+}
+.circuit-symbol line,
+.circuit-symbol path,
+.circuit-symbol polyline,
+.circuit-symbol rect,
+.circuit-symbol circle{
+  stroke:#222;
+  stroke-width:1.6;
+  fill:none;
+  vector-effect:non-scaling-stroke;
+}
+.circuit-symbol text{
+  fill:#222;
+  font-size:8px;
+  font-family:system-ui, sans-serif;
+}
+.circuit-symbol .aux{
+  stroke-width:1.1;
+  stroke-dasharray:2 2;
+}
+.circuit-symbol .pe{
+  stroke:#4d7b52;
+}
+.circuit-symbol .n{
+  stroke:var(--n);
+}
+.device-box.with-symbol,
+.intermediate-box.with-symbol{
+  width:138px;
+}
+.device-box.with-symbol .symbol-text,
+.intermediate-box.with-symbol .symbol-text{
+  min-width:0;
+}
+
+
+/* V6.2: Mehrfacheingänge des I-0-II-Umschalters */
+.change-inputs{
+  display:grid;
+  gap:8px;
+  padding:8px;
+  border:1px solid #d0d5dc;
+  border-radius:7px;
+  background:#f8fafc;
+}
+.change-inputs .change-bank{
+  display:grid;
+  gap:6px;
+}
+.change-inputs .change-bank-title{
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  color:#555d68;
+}
+.change-input-row{
+  display:grid;
+  grid-template-columns:54px 1fr;
+  gap:6px;
+  align-items:center;
+}
+.change-input-row span{
+  font-size:11px;
+  font-weight:800;
+}
+.change-input-row select{
+  width:100%;
+  min-width:0;
+}
+
+
+/* V6.4: sichtbare Ausgangsports bei Mehrport-Geräten */
+.multi-output-box{
+  margin-top:8px;
+  display:grid;
+  gap:6px;
+  padding:8px;
+  border:1px solid #d0d5dc;
+  border-radius:7px;
+  background:#fff;
+}
+.multi-output-title{
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  color:#555d68;
+}
+.multi-output-row{
+  display:grid;
+  grid-template-columns:54px 1fr;
+  gap:6px;
+  align-items:center;
+  font-size:11px;
+}
+.multi-output-port{
+  font-weight:800;
+}
+.multi-output-target{
+  color:#505963;
+}
+
+
+/* V6.5: Ausgänge aktiv zuordnen */
+.output-assign-row{
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:6px;
+  align-items:start;
+  padding:5px 0;
+  border-top:1px solid #e3e6ea;
+}
+.output-assign-row:first-of-type{
+  border-top:0;
+}
+.output-assign-controls{
+  display:grid;
+  gap:5px;
+}
+.output-assign-controls select{
+  width:100%;
+  min-width:0;
+}
+.output-links{
+  display:grid;
+  gap:3px;
+}
+.output-link{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  font-size:10px;
+  padding:3px 5px;
+  border:1px solid #d7dbe0;
+  border-radius:4px;
+  background:#f8fafc;
+}
+.output-link button{
+  padding:1px 5px;
+  font-size:10px;
+  line-height:1.3;
+}
+
+
+/* V6.6: vorgelagerte Quellen im Logikplan */
+.schematic-upstream-note{
+  font-size:9px;
+  color:#5f6770;
+  margin-top:3px;
+}
+.schematic-arrow.phase-P4::before{
+  background:linear-gradient(90deg,var(--l1) 0 25%,var(--l2) 25% 50%,var(--l3) 50% 75%,var(--n) 75% 100%);
+}
+.schematic-arrow.phase-P4::after{
+  border-left-color:#5d6570;
+}
+
+
+/* V6.9.2: N-Reihenklemmen blau darstellen */
+.device.termN,
+.zoom-device.termN{
+  background:#dbeafe !important;
+  border-color:#2563eb !important;
+}
+.device.termN .tech,
+.device.termN .label,
+.device.termN .meta,
+.zoom-device.termN .tech,
+.zoom-device.termN .label,
+.zoom-device.termN .meta{
+  color:#123b76 !important;
+}
+.device.termN::before,
+.zoom-device.termN::before{
+  background:#2563eb !important;
+}
+
+
+/* V6.9.3 Bugfix: N-Klemme wirklich blau rendern */
+.device.termN,
+.zoom-device.termN{
+  background:#cfe3ff !important;
+  border-color:#1f5fbf !important;
+  box-shadow:inset 0 0 0 1px #1f5fbf;
+}
+.device.termN .device-title,
+.device.termN .device-tech,
+.device.termN .tech,
+.device.termN .label,
+.device.termN .meta,
+.zoom-device.termN .device-title,
+.zoom-device.termN .device-tech,
+.zoom-device.termN .tech,
+.zoom-device.termN .label,
+.zoom-device.termN .meta{
+  color:#0b3f85 !important;
+}
+
+
+/* ===== V6.10 Stückliste ===== */
+.bom-dialog{
+  max-width:1100px;
+}
+.bom-content{
+  padding:18px;
+}
+.bom-print-title{
+  display:none;
+  margin:0 0 14px;
+  font-size:22px;
+  font-weight:800;
+}
+.bom-summary{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.bom-stat{
+  border:1px solid #d1d6dc;
+  border-radius:7px;
+  padding:7px 10px;
+  background:#f7f9fb;
+  font-size:11px;
+}
+.bom-stat strong{
+  display:block;
+  font-size:15px;
+  margin-top:2px;
+}
+.bom-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px;
+}
+.bom-table th,
+.bom-table td{
+  border:1px solid #cfd4da;
+  padding:7px 8px;
+  vertical-align:top;
+}
+.bom-table th{
+  background:#eef1f4;
+  text-align:left;
+}
+.bom-table td.qty{
+  text-align:center;
+  font-weight:800;
+  width:70px;
+}
+.bom-table td.width{
+  white-space:nowrap;
+}
+.bom-table tfoot td{
+  background:#f7f9fb;
+  font-weight:800;
+}
+.bom-empty{
+  padding:34px 10px;
+  text-align:center;
+  color:#68717b;
+}
+.bom-note{
+  margin-top:12px;
+  font-size:10px;
+  color:#626a74;
+}
+
+@media print{
+  body.print-bom-mode *{
+    visibility:hidden !important;
+  }
+  body.print-bom-mode #bomModal,
+  body.print-bom-mode #bomModal *{
+    visibility:visible !important;
+  }
+  body.print-bom-mode #bomModal{
+    position:absolute;
+    inset:0;
+    background:#fff;
+    padding:0;
+    overflow:visible;
+  }
+  body.print-bom-mode .bom-dialog{
+    box-shadow:none;
+    max-width:none;
+    min-height:0;
+  }
+  body.print-bom-mode .no-bom-print{
+    display:none !important;
+  }
+  body.print-bom-mode .bom-content{
+    padding:0;
+  }
+  body.print-bom-mode .bom-print-title{
+    display:block;
+  }
+}
+
+
+/* About */
+.about-modal{position:fixed;inset:0;z-index:1000;background:rgba(17,24,39,.58);display:grid;place-items:center;padding:20px}
+.about-modal[hidden]{display:none}
+.about-dialog{position:relative;width:min(560px,calc(100vw - 32px));background:#fff;border:1px solid #c9ced6;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:28px;text-align:center}
+.about-close{position:absolute;top:12px;right:12px;width:36px;height:36px;padding:0;border-radius:50%;font-size:24px;line-height:1}
+.about-brand{width:64px;height:64px;margin:0 auto 12px;border-radius:16px;display:grid;place-items:center;background:#1f2937;color:#fff;font-size:26px;font-weight:800;letter-spacing:-1px}
+.about-dialog h2{font-size:24px;margin:0 0 8px}
+.about-lead{max-width:470px;margin:0 auto 20px;color:var(--muted);line-height:1.5}
+.about-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 20px}
+.about-meta>div{padding:10px 8px;border:1px solid #d6dbe2;border-radius:10px;background:#f8fafc}
+.about-meta span{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.about-meta strong{display:block;font-size:13px}
+.coffee-box{display:flex;gap:14px;align-items:center;text-align:left;padding:16px;border:1px solid #d9dee5;border-radius:12px;background:#fafafa}
+.coffee-icon{font-size:32px;flex:0 0 auto}
+.coffee-box h3{margin:0 0 5px;font-size:16px}
+.coffee-box p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.coffee-button{display:block;margin-top:14px;padding:11px 14px;border-radius:9px;background:#1f2937;color:#fff;text-decoration:none;font-weight:700}
+.coffee-button:hover{background:#111827}
+.paypal-handle{margin-top:9px;font-weight:700;font-size:13px}
+.about-footnote{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.4}
+@media(max-width:620px){.about-meta{grid-template-columns:1fr}.about-dialog{padding:24px 18px}.coffee-box{align-items:flex-start}}
+
+.phase-balance-btn{align-self:end;white-space:nowrap}
+
+/* V6.27: 3-poligen LS im Stromlaufplan als eine Einheit mit drei Abgaengen darstellen */
+.circuit-column.threephase-column{
+  width:360px;
+  min-width:360px;
+}
+.circuit-column.threephase-column .phase-feed{
+  left:76px;
+}
+.circuit-column.threephase-column .threephase-device{
+  left:24px;
+  width:160px;
+}
+.threephase-wires{
+  position:absolute;
+  left:0;
+  top:120px;
+  width:330px;
+  height:266px;
+}
+/* Mehrpolige Geräte besitzen feste Anschlusspositionen am Gerät.
+   Erst darunter werden die Leiter zu den Zielklemmen aufgefächert. */
+.threephase-wires .wire3-route{position:absolute;inset:0;pointer-events:none}
+.threephase-wires .wire3-route i{position:absolute;display:block}
+.threephase-wires .wire3-route.L1 i{background:var(--l1)}
+.threephase-wires .wire3-route.L2 i{background:var(--l2)}
+.threephase-wires .wire3-route.L3 i{background:var(--l3)}
+/* V6.53: Die drei Leiter verlassen den 3P-LS an den drei echten Polpositionen
+   des Symbols. Erst unterhalb des Geräts werden sie zu den Zielklemmen
+   aufgefächert. Dadurch bleibt der LS optisch immer eine geschlossene 3P-Einheit. */
+.threephase-wires .wire3-route.L1 .wire3-head{left:36px;top:0;width:1px;height:30px}
+.threephase-wires .wire3-route.L1 .wire3-cross{left:36px;top:30px;width:18px;height:1px}
+.threephase-wires .wire3-route.L1 .wire3-tail{left:54px;top:30px;width:1px;height:282px}
+.threephase-wires .wire3-route.L2 .wire3-head{left:46px;top:0;width:1px;height:42px}
+.threephase-wires .wire3-route.L2 .wire3-cross{left:46px;top:42px;width:118px;height:1px}
+.threephase-wires .wire3-route.L2 .wire3-tail{left:164px;top:42px;width:1px;height:270px}
+.threephase-wires .wire3-route.L3 .wire3-head{left:57px;top:0;width:1px;height:54px}
+.threephase-wires .wire3-route.L3 .wire3-cross{left:57px;top:54px;width:217px;height:1px}
+.threephase-wires .wire3-route.L3 .wire3-tail{left:274px;top:54px;width:1px;height:258px}
+.circuit-column.threephase-column .terminal-block.threephase-terminal{
+  width:100px;
+  min-height:52px;
+}
+.circuit-column.threephase-column .terminal-block.threephase-terminal.t1{left:4px}
+.circuit-column.threephase-column .terminal-block.threephase-terminal.t2{left:114px}
+.circuit-column.threephase-column .terminal-block.threephase-terminal.t3{left:224px}
+.circuit-column.threephase-column .threephase-n{
+  left:330px;
+  top:-22px;
+  height:408px;
+}
+.circuit-column.threephase-column .threephase-pe{
+  left:330px;
+}
+
+/* V6.28 – 3-poligen LS im Logikplan als eine gemeinsame Einheit darstellen */
+.schematic-path-3p{
+  align-items:center;
+}
+.schematic-3p-fanout{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:4px 0;
+}
+.schematic-3p-branch{
+  display:flex;
+  align-items:center;
+  min-height:64px;
+}
+.schematic-path-3p > .schematic-node:not(.terminal){
+  align-self:center;
+}
+
+
+/* V6.30 – 3-poligen LS wirklich auf die volle Höhe seiner drei Abgänge strecken.
+   Die zusätzliche .schematic-node-Klasse erhöht die Spezifität gegenüber der
+   allgemeinen Zentrierungsregel für 3P-Pfade. */
+.schematic-path-3p > .schematic-node.schematic-node-3p-main{
+  align-self:stretch;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:100%;
+}
+
+/* V6.39: HLAK-Abgänge logisch gruppieren */
+.output-group-head{
+  display:grid;
+  grid-template-columns:minmax(86px,auto) 1fr;
+  gap:10px;
+  align-items:center;
+  margin:12px 0 5px;
+  padding:7px 8px;
+  border:1px solid #c8d0da;
+  border-radius:7px;
+  background:#f5f7fa;
+}
+.output-group-title{font-weight:700;color:#26384c;}
+.output-group-target{width:100%;min-width:0;}
+.output-group-hint{font-size:12px;color:#667487;margin:5px 0 8px;line-height:1.35;}
+
+
+/* V6.43 – Überspannungsschutz bewusst rot hervorgehoben */
+.device.surge,
+.zoom-device.surge{
+  background:#d62d20;
+  border-color:#8f1d15;
+  color:#fff;
+}
+.device.surge .meta,
+.zoom-device.surge .z-pos{
+  color:#fff;
+  opacity:.9;
+}
+.schematic-node.surge{
+  background:#d62d20;
+  border-color:#8f1d15;
+  color:#fff;
+}
+.schematic-node.surge .node-meta{
+  color:#fff;
+  opacity:.9;
+}
+.circuit-column .device-box.surge,
+.device-box.surge{
+  background:#d62d20;
+  border-color:#8f1d15;
+  color:#fff;
+}
+.circuit-column .device-box.surge .meta,
+.device-box.surge .meta{
+  color:#fff;
+  opacity:.9;
+}
+.device-box.surge svg,
+.device-box.surge svg *{
+  stroke:#fff;
+}
+.device-box.surge svg text{
+  fill:#fff;
+}
+
+
+/* V6.44 – Benutzerdefinierte Platzhalter in 0,5-TE-Schritten skalieren */
+.custom-width-controls{display:flex;gap:6px;margin-top:6px}
+.custom-width-controls[hidden]{display:none}
+.custom-width-controls button{flex:1;padding:6px 8px;border:1px solid #bfc5cd;border-radius:6px;background:#f4f6f8;font-weight:700;cursor:pointer}
+.custom-width-controls button:hover{background:#e9edf1}
+
+
+/* V6.45 – Projektname und Platzhalter bis 5 TE */
+.project-name-label{min-width:260px}
+.project-name-label input{min-width:240px}
+
+/* ===== V6.48 Stromlaufplan: reale Verknüpfung RCD -> LS und zentraler SPD ===== */
+.rcd-output-bundle{
+  position:absolute;
+  left:146px;
+  top:170px;
+  right:18px;
+  height:18px;
+  z-index:2;
+}
+.rcd-output-bundle span{
+  position:absolute;
+  left:0;
+  right:0;
+  height:1px;
+}
+.rcd-output-bundle .L1{top:0;background:var(--l1)}
+.rcd-output-bundle .L2{top:5px;background:var(--l2)}
+.rcd-output-bundle .L3{top:10px;background:var(--l3)}
+.rcd-output-bundle .N{top:15px;border-top:1px dashed var(--n);height:0}
+.rcd-output-bundle::before{
+  content:"";
+  position:absolute;
+  left:-1px;
+  top:-4px;
+  width:1px;
+  height:23px;
+  background:#58616b;
+}
+.circuit-columns{
+  top:188px;
+}
+.circuit-column .phase-feed{
+  top:0;
+  height:12px;
+}
+.circuit-column .device-box{
+  top:14px;
+}
+.circuit-column .wire-down{
+  top:52px;
+  height:334px;
+}
+.circuit-column .intermediate-box{
+  top:128px;
+}
+.circuit-column.has-intermediate .wire-down{
+  top:166px;
+  height:220px;
+}
+.circuit-column .n-tap{
+  top:-90px;
+  height:476px;
+}
+.circuit-column.threephase-column .threephase-device{
+  top:14px;
+}
+.threephase-wires{
+  top:74px;
+  height:312px;
+}
+.circuit-column.threephase-column .threephase-n{
+  top:-90px;
+  height:476px;
+}
+
+.standalone-protection-sheet{min-height:360px}
+.standalone-protection-canvas{
+  position:relative;
+  min-height:250px;
+  margin-left:86px;
+}
+.standalone-protection-canvas .bus.L1{top:18px}
+.standalone-protection-canvas .bus.L2{top:44px}
+.standalone-protection-canvas .bus.L3{top:70px}
+.standalone-protection-canvas .bus.N{top:96px}
+.standalone-protection-canvas .bus.PE{bottom:18px}
+.standalone-protection-cards{
+  position:absolute;
+  left:36px;
+  top:112px;
+  right:36px;
+  display:flex;
+  gap:40px;
+  flex-wrap:wrap;
+}
+.standalone-protection-card{
+  position:relative;
+  min-width:300px;
+  min-height:100px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 14px;
+  border:1px solid #8b2f28;
+  border-radius:6px;
+  background:#fff7f5;
+}
+.standalone-protection-card .standalone-symbol{width:54px;min-width:54px;height:68px}
+.standalone-device-text .tech{font-weight:800;font-size:13px}
+.standalone-device-text .label{font-size:11px;margin-top:2px}
+.standalone-device-text .meta{font-size:9px;color:#606a75;margin-top:5px;max-width:480px}
+.standalone-phase-feeds{
+  position:absolute;
+  left:30px;
+  top:-94px;
+  width:50px;
+  height:94px;
+}
+.standalone-phase-feeds .feed{
+  position:absolute;
+  width:1px;
+  bottom:0;
+}
+.standalone-phase-feeds .L1{left:0;height:94px;background:var(--l1)}
+.standalone-phase-feeds .L2{left:12px;height:68px;background:var(--l2)}
+.standalone-phase-feeds .L3{left:24px;height:42px;background:var(--l3)}
+.standalone-phase-feeds .N{left:36px;height:16px;border-left:1px dashed var(--n)}
+.standalone-pe-wire{
+  position:absolute;
+  left:57px;
+  top:100%;
+  width:1px;
+  height:44px;
+  background:#5e8f63;
+}
+
+
+/* ===== V6.49 – N-Zuordnung der Endklemmen zur RCD-Gruppe ===== */
+.neutral-binding{
+  margin:8px 0;
+  padding:8px 9px;
+  border:1px solid #9bbcff;
+  border-left:4px solid var(--n);
+  border-radius:6px;
+  background:#f4f8ff;
+  font-size:12px;
+  line-height:1.35;
+}
+.neutral-binding[hidden]{display:none}
+/* N der Endklemmen kommt hinter dem RCD aus dessen N-Abgang, nicht von der vorgeschalteten N-Sammelschiene. */
+.circuit-column .n-tap{top:-3px;height:389px}
+.circuit-column.threephase-column .threephase-n{top:-3px;height:389px}
+
+/* ===== V6.53 – fachgerechte 3P-Darstellung ohne Zickzack-Leitungen ===== */
+.circuit-column.threephase-column{
+  width:330px;
+  min-width:330px;
+}
+.circuit-column.threephase-column .threephase-device{
+  left:4px;
+  top:82px;
+  width:320px;
+  box-sizing:border-box;
+  padding:6px 0;
+}
+.circuit-column.threephase-column .threephase-device .circuit-symbol-wrap{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:2px;
+  align-items:center;
+}
+.circuit-column.threephase-column .wide-3p-symbol{
+  width:300px;
+  min-width:300px;
+  height:44px;
+  margin:0 auto;
+}
+.circuit-column.threephase-column .wide-3p-symbol svg{
+  width:300px;
+  height:44px;
+}
+.circuit-column.threephase-column .threephase-device .symbol-text{
+  display:flex;
+  align-items:baseline;
+  justify-content:center;
+  gap:8px;
+  min-height:16px;
+  white-space:nowrap;
+}
+.circuit-column.threephase-column .threephase-device .symbol-text .label,
+.circuit-column.threephase-column .threephase-device .symbol-text .meta{
+  margin-top:0;
+}
+/* L1/L2/L3 laufen sowohl vor als auch nach dem 3P-LS exakt senkrecht.
+   Die Anschlussachsen entsprechen den drei Polpositionen des breiten Symbols
+   und den Mittelpunkten der drei nachgeordneten Klemmen. */
+.circuit-column.threephase-column .phase-feed3{
+  position:absolute;
+  top:0;
+  width:1px;
+  height:82px;
+  z-index:2;
+}
+.circuit-column.threephase-column .phase-feed3.L1{left:54px;background:var(--l1)}
+.circuit-column.threephase-column .phase-feed3.L2{left:164px;background:var(--l2)}
+.circuit-column.threephase-column .phase-feed3.L3{left:274px;background:var(--l3)}
+.circuit-column.threephase-column .threephase-wires{
+  position:absolute;
+  left:0;
+  top:157px;
+  width:330px;
+  height:229px;
+}
+.circuit-column.threephase-column .wire3-straight{
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:1px;
+}
+.circuit-column.threephase-column .wire3-straight.L1{left:54px;background:var(--l1)}
+.circuit-column.threephase-column .wire3-straight.L2{left:164px;background:var(--l2)}
+.circuit-column.threephase-column .wire3-straight.L3{left:274px;background:var(--l3)}
+
+/* ===== V6.54 – leiterweise Klemmenanschlüsse L / N / PE =====
+   L läuft ausschließlich über den LS in das L-Segment der Reihenklemme.
+   N kommt separat vom N-Ausgang des vorgelagerten RCD.
+   PE kommt separat von der durchgehenden PE-Potentiallinie. */
+
+/* Die Klemmen-Symbolik nutzt die volle Breite der drei Segmente. */
+.terminal-symbol-row{
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  justify-content:stretch;
+  padding:2px 0 1px;
+}
+.circuit-column .terminal-wide-symbol{
+  width:100%;
+  min-width:0;
+  height:34px;
+}
+.circuit-column .terminal-wide-symbol svg{
+  width:100%;
+  height:34px;
+}
+
+/* Einphasiger Endstromkreis: L/N/PE auf den Mittelpunkten ihrer Segmente. */
+.circuit-column:not(.threephase-column) .phase-feed,
+.circuit-column:not(.threephase-column) .wire-down{
+  left:20px;
+}
+.circuit-column:not(.threephase-column) .n-tap{
+  left:59px;
+}
+.circuit-column .pe-tap{
+  position:absolute;
+  left:98px;
+  top:362px;
+  width:1px;
+  height:26px;
+  background:#5e8f63;
+  z-index:2;
+}
+
+/* PE ist ein eigener vorgelagerter Potentialpfad und läuft nicht durch LS/RCD. */
+.circuit-canvas .bus.PE{
+  top:550px;
+  bottom:auto;
+  height:1px;
+  border:0;
+  background:#5e8f63;
+}
+.circuit-label.PE{
+  top:544px;
+  bottom:auto;
+}
+
+/* 3P-LS: drei gerade L-Pfade exakt in die L-Segmente der drei Klemmen. */
+.circuit-column.threephase-column .threephase-device{
+  width:260px;
+}
+.circuit-column.threephase-column .wide-3p-symbol{
+  width:260px;
+  min-width:260px;
+}
+.circuit-column.threephase-column .wide-3p-symbol svg{
+  width:260px;
+}
+.circuit-column.threephase-column .phase-feed3.L1,
+.circuit-column.threephase-column .wire3-straight.L1{left:21px}
+.circuit-column.threephase-column .phase-feed3.L2,
+.circuit-column.threephase-column .wire3-straight.L2{left:131px}
+.circuit-column.threephase-column .phase-feed3.L3,
+.circuit-column.threephase-column .wire3-straight.L3{left:241px}
+
+/* N kommt dreimal separat vom RCD-N-Pfad auf die N-Segmente. */
+.circuit-column.threephase-column .threephase-n{
+  top:-3px;
+  height:389px;
+}
+.circuit-column.threephase-column .threephase-n.n1{left:54px}
+.circuit-column.threephase-column .threephase-n.n2{left:164px}
+.circuit-column.threephase-column .threephase-n.n3{left:274px}
+
+/* PE kommt dreimal separat von der PE-Potentiallinie auf die PE-Segmente. */
+.circuit-column.threephase-column .threephase-pe{
+  top:362px;
+  height:26px;
+  width:1px;
+  background:#5e8f63;
+  border:0;
+}
+.circuit-column.threephase-column .threephase-pe.p1{left:87px}
+.circuit-column.threephase-column .threephase-pe.p2{left:197px}
+.circuit-column.threephase-column .threephase-pe.p3{left:307px}
+
+/* Alte untere PE-Stummel aus früheren Layouts werden nicht mehr verwendet. */
+.circuit-column .pe-join{display:none}
+
+
+/* ===== V6.55 – Stromlaufplan wächst horizontal mit dem Inhalt =====
+   Große RCD-Gruppen dürfen die feste Grundfläche von 1180 px überschreiten. */
+.rcd-circuit-sheet{
+  width:max-content;
+}
+.rcd-circuit-sheet .circuit-grid{
+  grid-template-columns:86px var(--circuit-canvas-width,1030px);
+  width:max-content;
+}
+.rcd-circuit-sheet .circuit-canvas{
+  width:var(--circuit-canvas-width,1030px);
+  min-width:var(--circuit-canvas-width,1030px);
+}
+@media print{
+  body.print-circuit-mode .rcd-circuit-sheet{width:max-content}
+}
+
+/* V6.61: optionales Folgen der Auswahl */
+.jump-toggle{display:flex;align-items:center;gap:8px;white-space:nowrap;align-self:end;padding-bottom:6px;font-weight:600}
+.jump-toggle input{width:18px;height:18px;accent-color:currentColor}
+
+/* V6.61 – Zoom schnell auf 100 % zurücksetzen */
+.view-scale-reset{padding:4px 8px;border:1px solid #bfc5cd;border-radius:6px;background:#f4f6f8;color:#30363d;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.view-scale-reset:hover{background:#e9edf1}
+
+/* ===== V6.62 Hilfe / Anleitung ===== */
+.help-dialog{max-width:900px;max-height:90vh;overflow:auto}
+.help-content{margin-top:18px;text-align:left}
+.help-content h3{margin:18px 0 6px;font-size:16px}
+.help-content p{margin:0;color:#374151;line-height:1.55}
+
+
+/* ===== V6.63 Komfort / Bestand-Neu / Plausibilität ===== */
+.device.is-new,.zoom-device.is-new{box-shadow:inset 0 0 0 3px #2f9e44}
+.device.is-new::after,.zoom-device.is-new::after{content:"NEU";position:absolute;right:2px;bottom:2px;background:#2f9e44;color:#fff;font-size:8px;font-weight:800;line-height:1;padding:2px 3px;border-radius:3px;z-index:4}
+.device.terminal.is-new::after,.zoom-device.terminal.is-new::after{content:"";width:4px;height:100%;right:0;top:0;bottom:auto;padding:0;border-radius:0}
+.new-inline{display:inline-block;background:#2f9e44;color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;font-weight:800;vertical-align:1px}
+.snap-guide{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:7;pointer-events:none;opacity:.75;box-shadow:0 0 0 1px rgba(255,255,255,.65)}
+.actions button:disabled{opacity:.45;cursor:not-allowed}
+.bom-new-toggle{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:5px 7px;border:1px solid #cfd4da;border-radius:6px;background:#fff}
+.check-dialog{max-width:900px}.check-content{padding:18px}.check-summary{font-weight:800;margin-bottom:12px}.check-list{display:grid;gap:8px}.check-item{padding:9px 11px;border-radius:7px;border-left:4px solid #8b949e;background:#f6f7f8}.check-item.error{border-left-color:#b3261e}.check-item.warn{border-left-color:#c88600}.check-item.info{border-left-color:#4776a8}.check-ok{padding:18px;border-radius:8px;background:#eef8f0;border:1px solid #b8dfc0}.check-disclaimer{margin-top:16px;font-size:12px;color:var(--muted)}
+
+
+/* ===== V6.64 – Stromlaufplan: 1P- und 3P-LS auf gleicher Höhe =====
+   Reine Darstellungsanpassung. Die elektrische/logische Zuordnung bleibt unverändert. */
+.circuit-column.threephase-column .threephase-device{
+  top:14px;
+}
+.circuit-column.threephase-column .phase-feed3{
+  height:14px;
+}
+.circuit-column.threephase-column .threephase-wires{
+  top:74px;
+  height:312px;
+}
+
+
+/* ===== V6.65 – definierte Einspeisung des Verteilers ===== */
+.project-feed-label{min-width:280px}
+.project-feed-label input{min-width:260px}
+.board-feed,.plan-feed{display:flex;align-items:center;gap:12px;border:1px solid #94a3b8;border-left:5px solid #334155;background:#f8fafc;border-radius:8px;padding:9px 12px;margin:0 0 12px 0;color:#0f172a}
+.board-feed strong,.plan-feed strong{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#475569}
+.board-feed span,.plan-feed span{font-weight:700}
+.plan-feed{margin:8px 0 16px}
+@media print{.board-feed,.plan-feed{break-inside:avoid;background:#fff}}
+
+/* ===== V6.66 – externe logische Quellen ===== */
+.sources-btn{align-self:end}.sources-dialog{max-width:860px}.sources-list{display:flex;flex-direction:column;gap:10px;padding:18px}.source-row{display:grid;grid-template-columns:minmax(260px,1fr) auto auto;gap:12px;align-items:center;padding:10px;border:1px solid #d5dbe5;border-radius:8px;background:#f7f9fc}.source-name{min-width:0}.source-conductors{font-size:.88rem;color:#526072;white-space:nowrap}.sources-note{padding:0 18px 18px}.schematic-node.external-source{border-style:dashed;background:#f2f5f9}.schematic-node.external-source .node-tech{letter-spacing:.04em}
+
+
+/* ===== Server-Anbindung (Pläne, Anmeldung) ===== */
+.server-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-right:10px;margin-right:2px;border-right:1px solid #4b5563}
+.server-bar[hidden]{display:none}
+.server-status{font-size:12px;color:#d6dae0;min-width:120px;text-align:right}
+.server-status.ok{color:#9be3b0}
+.server-status.dirty{color:#ffe08a}
+.server-status.err{color:#ffb4a8}
+.server-status a{color:inherit}
+.server-user{font-size:12px;color:#d6dae0;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plans-dialog{max-width:860px}
+.plans-list{padding:18px;display:flex;flex-direction:column;gap:10px}
+.plan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:10px 12px;border:1px solid #d5dbe5;border-radius:8px;background:#f7f9fc}
+.plan-row.current{border-color:var(--accent);background:#eef4fb}
+.plan-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.plan-info strong{overflow:hidden;text-overflow:ellipsis}
+.plan-actions{display:flex;gap:6px}
+.plan-history{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px dashed #cfd4db}
+.plan-history[hidden]{display:none}
+.history-line{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}

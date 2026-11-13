@@ -1,0 +1,5 @@
+**/node_modules
+server/test
+server/data
+.git
+*.tar.gz

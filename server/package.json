@@ -1,0 +1,22 @@
+{
+  "name": "hv-planer-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SQLite- und OIDC-Backend für den HV-Planer",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "openid-client": "^6.8.9"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.1",
+    "oidc-provider": "^9.14.0"
+  }
+}
