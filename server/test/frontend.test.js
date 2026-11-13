@@ -195,3 +195,10 @@ test("Frontend: bis zu 8 Felder auswählbar", async () => {
     assert.equal(dom.window.document.querySelectorAll("#board .field, .board .field").length, 5);
   } finally { dom.window.close(); }
 });
+
+test("Frontend: 'Zur Auswahl springen' ist standardmäßig aus", async () => {
+  const dom = await openPage("http://127.0.0.1:1", { fileMode: true });
+  try {
+    assert.equal($(dom, "#autoJump").checked, false);
+  } finally { dom.window.close(); }
+});

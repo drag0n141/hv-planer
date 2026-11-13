@@ -43,6 +43,11 @@ js = sub(js,
 js = sub(js, 'els.resetBtn.onclick=()=>{if(!confirm("Aktuellen Plan wirklich löschen?"))return;pushHistory("reset");',
          'els.resetBtn.onclick=()=>{if(!confirm("Aktuellen Plan wirklich löschen?"))return;pushHistory("reset");server.detach();', "reset")
 
+# 3b) "Zur Auswahl springen" standardmäßig aus: Beim Einfügen scrollt die Seite sonst jedes Mal zur Geräteliste
+js = sub(js, 'autoJump:true,insertStatus:"existing",projectName:""', 'autoJump:false,insertStatus:"existing",projectName:""', "autoJump-default")
+js = sub(js, "state.autoJump=data.autoJump!==false", "state.autoJump=data.autoJump===true", "autoJump-load")
+js = sub(js, "state.autoJump=true;els.autoJump.checked=true;", "state.autoJump=false;els.autoJump.checked=false;", "autoJump-reset")
+
 # 4) Server-Modul vor das abschließende })();
 body = js.rstrip()
 if not body.endswith("})();"):
@@ -55,6 +60,8 @@ html = sub(html, '      <button id="saveBtn">Plan speichern</button>\n',
            (frag / "server-bar.html").read_text(encoding="utf-8") + '      <button id="saveBtn">Plan speichern</button>\n', "html-actions")
 html = sub(html, '  <div id="helpModal" class="about-modal" hidden>',
            (frag / "plans-modal.html").read_text(encoding="utf-8") + '  <div id="helpModal" class="about-modal" hidden>', "html-modal")
+
+html = sub(html, '<input id="autoJump" type="checkbox" checked />', '<input id="autoJump" type="checkbox" />', "autoJump-checkbox")
 
 # Upstream erlaubt nur 1-3 Felder; Schränke mit mehr Feldern sind üblich (Auswahl bis 8)
 html = sub(html,

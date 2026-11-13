@@ -12,7 +12,7 @@
     throw new Error("HV-Komponentenbibliothek components.js konnte nicht geladen werden.");
   }
 
-  const state={fields:2,rows:5,te:12,viewScale:100,autoJump:true,insertStatus:"existing",projectName:"",externalSources:[],nextSourceId:-1,selectedPalette:null,selectedDeviceId:null,devices:[],nextId:1,
+  const state={fields:2,rows:5,te:12,viewScale:100,autoJump:false,insertStatus:"existing",projectName:"",externalSources:[],nextSourceId:-1,selectedPalette:null,selectedDeviceId:null,devices:[],nextId:1,
     openPaletteCategories:new Set(["Schutzgeräte"]),phaseStarts:{},rowRailModes:{}};
 
   const $=s=>document.querySelector(s);
@@ -2697,7 +2697,7 @@
       state.projectName=String(data.projectName||"");
       state.externalSources=Array.isArray(data.externalSources)?data.externalSources.map(x=>({id:Number(x.id),externalSource:true,label:String(x.label||"Externe Quelle"),tech:""})):[];
       if(!state.externalSources.length && String(data.projectFeed||"").trim()) state.externalSources=[{id:-1,externalSource:true,label:String(data.projectFeed).trim(),tech:""}];
-      state.nextSourceId=Number(data.nextSourceId)||Math.min(-1,...state.externalSources.map(x=>Number(x.id)||-1))-1;state.fields=Number(data.fields)||2;state.rows=Number(data.rows)||5;state.te=Number(data.te)||12;state.viewScale=Math.max(60,Math.min(250,Number(data.viewScale)||100));state.autoJump=data.autoJump!==false;state.insertStatus=data.insertStatus==="new"?"new":"existing";
+      state.nextSourceId=Number(data.nextSourceId)||Math.min(-1,...state.externalSources.map(x=>Number(x.id)||-1))-1;state.fields=Number(data.fields)||2;state.rows=Number(data.rows)||5;state.te=Number(data.te)||12;state.viewScale=Math.max(60,Math.min(250,Number(data.viewScale)||100));state.autoJump=data.autoJump===true;state.insertStatus=data.insertStatus==="new"?"new":"existing";
       state.phaseStarts=(data.phaseStarts && typeof data.phaseStarts==="object")?{...data.phaseStarts}:{};
       state.devices=Array.isArray(data.devices)?data.devices.map(migrateLoadedDevice):[];
       if(data.rowRailModes && typeof data.rowRailModes==="object"){
@@ -2801,7 +2801,7 @@
   els.aboutModal.addEventListener("click",e=>{if(e.target===els.aboutModal) els.aboutModal.hidden=true});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!els.aboutModal.hidden) els.aboutModal.hidden=true});
   
-  els.resetBtn.onclick=()=>{if(!confirm("Aktuellen Plan wirklich löschen?"))return;pushHistory("reset");server.detach();state.projectName="";els.projectName.value="";state.externalSources=[];state.nextSourceId=-1;state.viewScale=100;els.viewScale.value="100";state.autoJump=true;els.autoJump.checked=true;state.insertStatus="existing";els.insertStatus.value="existing";state.devices=[];state.selectedDeviceId=null;state.selectedPalette=null;state.nextId=1;state.phaseStarts={};state.rowRailModes={};renderProjectTitles();renderAll()};
+  els.resetBtn.onclick=()=>{if(!confirm("Aktuellen Plan wirklich löschen?"))return;pushHistory("reset");server.detach();state.projectName="";els.projectName.value="";state.externalSources=[];state.nextSourceId=-1;state.viewScale=100;els.viewScale.value="100";state.autoJump=false;els.autoJump.checked=false;state.insertStatus="existing";els.insertStatus.value="existing";state.devices=[];state.selectedDeviceId=null;state.selectedPalette=null;state.nextId=1;state.phaseStarts={};state.rowRailModes={};renderProjectTitles();renderAll()};
 
   function flash(msg){els.statusBar.textContent=msg;setTimeout(renderStatus,1800)}
   function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
