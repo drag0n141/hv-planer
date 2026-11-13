@@ -1680,3 +1680,25 @@ footer{padding:0 16px 16px;color:var(--muted)}
 .plan-share input[type="search"]{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c9ced6;border-radius:6px;font:inherit}
 .row-move-btn{margin-left:6px;padding:0 6px;line-height:18px;font-size:12px;cursor:pointer}
 .row-move-btn:disabled{opacity:.35;cursor:default}
+
+/* Layout fix: keep the properties panel in its own right column on
+   medium screens instead of wrapping it below the whole page, and make
+   all three columns shrink with the viewport. */
+.layout{grid-template-columns:minmax(170px,220px) minmax(0,1fr) minmax(230px,270px)}
+.palette,.properties,.workspace{min-width:0;box-sizing:border-box}
+.properties{position:sticky;top:8px;max-height:calc(100vh - 16px);overflow-y:auto;overflow-x:hidden}
+.properties input,.properties select{width:100%;min-width:0;box-sizing:border-box}
+.palette-item,.palette-item *{overflow-wrap:anywhere}
+@media(max-width:1550px) and (min-width:1001px){
+  .layout{grid-template-columns:minmax(170px,200px) minmax(0,1fr) minmax(230px,250px)}
+  .properties{grid-column:auto}
+}
+@media(max-width:1000px){
+  .layout{grid-template-columns:200px minmax(0,1fr)}
+  .properties{grid-column:1/-1;position:static;max-height:none}
+}
+@media(max-width:760px){
+  .layout{grid-template-columns:1fr}
+  .palette,.properties{grid-column:auto}
+}
+@media print{.properties{position:static;max-height:none;overflow:visible}}
