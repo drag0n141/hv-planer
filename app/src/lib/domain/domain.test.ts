@@ -250,6 +250,8 @@ describe("Auswertungen", () => {
     const first = list.find((c) => c.deviceId === s.term)!;
     expect(first.steps.map((x) => x.id)).toEqual([s.src, s.rcd, s.a, s.term]);
     expect(first).toMatchObject({ lines: ["L1"], neutral: "RCD 4P" });
+    // N läuft durch RCD und Klemme, am LS 1P vorbei; PE führt nur die Klemme
+    expect(first.steps.map((x) => [x.n, x.pe])).toEqual([[true, true], [true, false], [false, false], [true, true]]);
   });
 
   it("zählt Abgänge je Phase", () => {

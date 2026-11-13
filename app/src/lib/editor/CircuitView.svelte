@@ -4,7 +4,7 @@
    * darunter je Stromkreis eine Spalte mit den durchlaufenen Geräten.
    * N und PE werden getrennt vom Außenleiterpfad geführt.
    */
-  import { circuits } from "../domain/reports";
+  import { circuits, type CircuitStep } from "../domain/reports";
   import type { Conductor } from "../domain/types";
   import { editor } from "./editor.svelte";
 
@@ -34,6 +34,33 @@
   const width = $derived(LEFT + Math.max(1, cols.length) * COL + 6);
   const height = $derived(TOP + (depth - 1) * PITCH + BOX_H + 10);
   const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+  /**
+   * Weg von N oder PE durch eine Spalte: durch Geräte, die den Leiter führen, hindurch,
+   * an allen anderen außen vorbei. Die Kästen liegen über den Linien, deshalb ist nur
+   * sichtbar, wo der Leiter ein- und austritt.
+   */
+  function sidePath(boxes: CircuitStep[], cx: number, carries: (s: CircuitStep) => boolean, y0: number, inside: number, outside: number): string {
+    const xIn = cx + inside;
+    const xOut = cx + outside;
+    const last = boxes.length - 1;
+    let x = carries(boxes[0]) ? xIn : xOut;
+    const pts: [number, number][] = [[x, y0]];
+    boxes.forEach((s, i) => {
+      const top = TOP + i * PITCH;
+      const want = carries(s) ? xIn : xOut;
+      if (want !== x) {
+        // Versatz in der Lücke über dem Kasten
+        pts.push([x, top - 4], [want, top - 4]);
+        x = want;
+      }
+      if (i === last) {
+        // Führt das Endgerät den Leiter nicht selbst (z. B. LS 1P), läuft er daran vorbei weiter zum Verbraucher.
+        pts.push([x, carries(s) ? top : top + BOX_H + 3]);
+      } else pts.push([x, top + BOX_H]);
+    });
+    return pts.map((p) => p.join(",")).join(" ");
+  }
 </script>
 
 <div class="view">
@@ -57,18 +84,15 @@
             <circle cx={x} cy={busY(l)} r="1.1" fill={COLOR[l]} />
             <line class="wire" x1={x} x2={x} y1={busY(l)} y2={leafY} stroke={COLOR[l]} />
           {/each}
-          {#if col.c.neutral}
-            {@const x = col.cx + BOX_W / 2 + 3}
-            <circle cx={x} cy={busY("N")} r="1.1" fill={COLOR.N} />
-            <polyline class="wire" points="{x},{busY('N')} {x},{leafY + BOX_H / 2 - 2} {col.cx + BOX_W / 2},{leafY + BOX_H / 2 - 2}" stroke={COLOR.N} />
-            {#each col.boxes as s, i}
-              {#if s.label === col.c.neutral && i !== last}<rect x={x - 1.4} y={TOP + i * PITCH + BOX_H / 2 - 1.4} width="2.8" height="2.8" fill={COLOR.N} />{/if}
-            {/each}
+          {#if col.c.neutral && col.boxes.length}
+            {@const x0 = col.cx + (col.boxes[0].n ? 6 : BOX_W / 2 - 1)}
+            <circle cx={x0} cy={busY("N")} r="1.1" fill={COLOR.N} />
+            <polyline class="wire" points={sidePath(col.boxes, col.cx, (s) => s.n, busY("N"), 6, BOX_W / 2 - 1)} stroke={COLOR.N} />
           {/if}
-          {#if col.c.earth}
-            {@const x = col.cx + BOX_W / 2 + 6}
-            <circle cx={x} cy={busY("PE")} r="1.1" fill={COLOR.PE} />
-            <polyline class="wire" stroke-dasharray="3 1.5" points="{x},{busY('PE')} {x},{leafY + BOX_H / 2 + 2} {col.cx + BOX_W / 2},{leafY + BOX_H / 2 + 2}" stroke={COLOR.PE} />
+          {#if col.c.earth && col.boxes.length}
+            {@const x0 = col.cx + (col.boxes[0].pe ? 10 : BOX_W / 2 + 2)}
+            <circle cx={x0} cy={busY("PE")} r="1.1" fill={COLOR.PE} />
+            <polyline class="wire" stroke-dasharray="3 1.5" points={sidePath(col.boxes, col.cx, (s) => s.pe, busY("PE"), 10, BOX_W / 2 + 2)} stroke={COLOR.PE} />
           {/if}
 
           {#each col.boxes as s, i (s.id)}

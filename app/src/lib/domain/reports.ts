@@ -249,6 +249,9 @@ export interface CircuitStep {
   sub: string;
   role: string;
   source: boolean;
+  /** Gerät hat einen N- bzw. PE-Anschluss; der Leiter läuft im Stromlaufplan hindurch. */
+  n: boolean;
+  pe: boolean;
 }
 
 export interface Circuit {
@@ -280,12 +283,15 @@ export function circuits(plan: Plan, w = new Wiring(plan)): Circuit[] {
     const chainIds = w.chain(d);
     const steps: CircuitStep[] = [...chainIds].reverse().map((id) => {
       const dev = w.devices.get(id);
+      const ports = dev ? [...w.def(dev).inputs, ...w.def(dev).outputs] : [];
       return {
         id,
         label: w.nodeLabel(id),
         sub: dev ? dev.tech : "Quelle",
         role: dev ? w.def(dev).role : "source",
         source: isSourceId(id),
+        n: !dev || ports.some((p) => p.kind === "N"),
+        pe: !dev || ports.some((p) => p.kind === "PE"),
       };
     });
     const all = w.phasesOf(d);

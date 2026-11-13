@@ -6,7 +6,6 @@
   import { untrack } from "svelte";
   import { nearestFreeX } from "../domain/plan";
   import { TE, defWidthMM, railConfig, type Conductor, type Device, type DeviceDef } from "../domain/types";
-  import { isLineKind } from "../domain/wiring";
   import Button from "../ui/Button.svelte";
   import { editor } from "./editor.svelte";
 
@@ -340,12 +339,9 @@
   /** Farbstreifen am unteren Gerätrand: ein Segment je Pol. */
   function poles(d: Device): (Conductor | null)[] {
     const def = w.def(d);
-    const ins = def.inputs.filter((p) => p.kind !== "ctrl" && p.kind !== "PE");
-    if (ins.length) {
-      const lines = ins.filter((p) => isLineKind(p.kind));
-      return (lines.length ? lines : ins).map((p) => w.inputPotential(d, p.id));
-    }
-    return def.outputs.filter((p) => isLineKind(p.kind)).map((p) => w.outputPotential(d.id, p.id));
+    const ins = def.inputs.filter((p) => p.kind !== "ctrl");
+    if (ins.length) return ins.map((p) => w.inputPotential(d, p.id));
+    return def.outputs.map((p) => w.outputPotential(d.id, p.id));
   }
 
   /** Schriftgröße für hochkant beschriftete, schmale Geräte. */
@@ -390,12 +386,16 @@
   });
 
   const rails = $derived.by(() => {
-    const out: { f: number; r: number; x: number; y: number; bar: (Conductor | null)[]; selected: boolean }[] = [];
+    const out: { f: number; r: number; x: number; y: number; bar: (Conductor | null | undefined)[]; selected: boolean }[] = [];
     const sel = editor.selection;
     for (let f = 0; f < plan.board.fields; f++) {
       for (let r = 0; r < plan.board.rows; r++) {
         const cfg = railConfig(plan, f, r);
-        const bar = cfg.busbar === "none" ? [] : Array.from({ length: plan.board.te }, (_, i) => w.busbarPhaseAt(f, r, i * TE + 1));
+        // Unter einem einspeisenden Gerät (RCD, Hauptschalter) liegt keine Schiene: sie beginnt an dessen Abgang.
+        const feeders = w.onRail(f, r).filter((d) => w.def(d).busbarFeed);
+        const covered = (x: number) => feeders.some((d) => x > d.x && x < d.x + d.width);
+        const bar =
+          cfg.busbar === "none" ? [] : Array.from({ length: plan.board.te }, (_, i) => (covered(i * TE + TE / 2) ? undefined : w.busbarPhaseAt(f, r, i * TE + 1)));
         out.push({ f, r, x: railX(f), y: railY(r), bar, selected: sel?.kind === "rail" && sel.field === f && sel.row === r });
       }
     }
@@ -436,7 +436,9 @@
           <line class="tick" x1={rail.x + i * TE} x2={rail.x + i * TE} y1={rail.y + DEV_H / 2 - 8} y2={rail.y + DEV_H / 2 + 8} />
         {/each}
         {#each rail.bar as c, i}
-          <rect class="bar" x={rail.x + i * TE + 0.4} y={rail.y + BAR_Y} width={TE - 0.8} height={BAR_H} fill={c ? COLOR[c] : "var(--unknown)"} />
+          {#if c !== undefined}
+            <rect class="bar" x={rail.x + i * TE + 0.4} y={rail.y + BAR_Y} width={TE - 0.8} height={BAR_H} fill={c ? COLOR[c] : "var(--unknown)"} />
+          {/if}
         {/each}
       </g>
     {/each}
