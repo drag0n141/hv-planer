@@ -141,7 +141,7 @@ describe("OIDC-Anmeldung gegen Test-Provider", () => {
         { client_id: "hv-post", client_secret: "geheim-post", redirect_uris: [redirect], token_endpoint_auth_method: "client_secret_post" },
         { client_id: "hv-none", redirect_uris: [redirect], token_endpoint_auth_method: "none" },
       ],
-      claims: { openid: ["sub"], email: ["email", "email_verified"], profile: ["name"] },
+      claims: { openid: ["sub"], email: ["email", "email_verified"], profile: ["name", "groups"] },
       scopes: ["openid", "email", "profile"],
       features: { devInteractions: { enabled: true } },
       cookies: { keys: ["k".repeat(32)] },
@@ -155,7 +155,7 @@ describe("OIDC-Anmeldung gegen Test-Provider", () => {
               email: `${id}@example.com`,
               email_verified: true,
               name: `Nutzer ${id}`,
-              
+              groups: id === "chef" ? ["users", "hv-admins"] : ["users"],
             };
           },
         };
@@ -254,6 +254,42 @@ describe("OIDC-Anmeldung gegen Test-Provider", () => {
       }
     });
   }
+
+  test("Admin-Rolle folgt der konfigurierten OIDC-Gruppe", async () => {
+    const a = await startApp("post", { OIDC_ADMIN_GROUP: "hv-admins" });
+    try {
+      const login = async (account) => {
+        const jar = new Jar();
+        const { callbackUrl } = await startLogin(jar, account, "/");
+        assert.equal((await finishLogin(jar, callbackUrl)).ex.status, 200);
+        return jar;
+      };
+      const chef = await login("chef");
+      assert.equal((await (await request(chef, `${base}/api/me`)).json()).admin, true);
+      const alice = await login("alice");
+      assert.equal((await (await request(alice, `${base}/api/me`)).json()).admin, false);
+      const denied = await request(alice, `${base}/api/catalog`, {
+        method: "POST",
+        headers: { "X-HV-Client": "1", "Content-Type": "application/json" },
+        body: "{}",
+      });
+      assert.equal(denied.status, 403);
+    } finally {
+      await stopApp(a);
+    }
+  });
+
+  test("ohne OIDC_ADMIN_GROUP ist niemand Admin", async () => {
+    const a = await startApp("post");
+    try {
+      const jar = new Jar();
+      const { callbackUrl } = await startLogin(jar, "chef", "/");
+      await finishLogin(jar, callbackUrl);
+      assert.equal((await (await request(jar, `${base}/api/me`)).json()).admin, false);
+    } finally {
+      await stopApp(a);
+    }
+  });
 
   test("Austausch braucht Client-Header und gültigen Code", async () => {
     const a = await startApp("post");

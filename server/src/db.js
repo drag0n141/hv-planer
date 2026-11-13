@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { BUILTIN_CATALOG } from "./catalog-builtin.js";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS plans (
@@ -42,7 +43,19 @@ CREATE TABLE IF NOT EXISTS plan_shares (
   PRIMARY KEY (plan_id, user_sub)
 );
 CREATE INDEX IF NOT EXISTS plan_shares_user ON plan_shares(user_sub);
+
+CREATE TABLE IF NOT EXISTS catalog (
+  id         TEXT PRIMARY KEY,
+  builtin    INTEGER NOT NULL DEFAULT 0,
+  hidden     INTEGER NOT NULL DEFAULT 0,
+  sort       INTEGER NOT NULL DEFAULT 0,
+  def        TEXT    NOT NULL,
+  updated_at TEXT    NOT NULL
+);
 `;
+
+/** Planformat: 1 = bisheriger HV-Planer (V6), 2 = neue Oberfläche. */
+export const planSchema = (data) => (data?.schema === 2 ? 2 : 1);
 
 /**
  * Öffnet (und legt bei Bedarf an) die SQLite-Datenbank.
@@ -53,15 +66,19 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
+  // Nachträglich ergänzte Spalte (Datenbanken aus Version 1.x)
+  if (!db.prepare("PRAGMA table_info(plans)").all().some((c) => c.name === "schema")) {
+    db.exec("ALTER TABLE plans ADD COLUMN schema INTEGER NOT NULL DEFAULT 1");
+  }
 
   const q = {
     insert: db.prepare(
-      `INSERT INTO plans (owner, owner_name, name, data, version, created_at, updated_at, updated_by)
-       VALUES (?, ?, ?, ?, 1, ?, ?, ?)`
+      `INSERT INTO plans (owner, owner_name, name, data, schema, version, created_at, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)`
     ),
     get: db.prepare("SELECT * FROM plans WHERE id = ?"),
     list: db.prepare(
-      `SELECT p.id, p.name, p.version, p.owner, p.owner_name, p.updated_at, p.updated_by, s.permission AS share_permission
+      `SELECT p.id, p.name, p.version, p.schema, p.owner, p.owner_name, p.updated_at, p.updated_by, s.permission AS share_permission
          FROM plans p LEFT JOIN plan_shares s ON s.plan_id = p.id AND s.user_sub = ?
         WHERE p.owner = ? OR s.user_sub IS NOT NULL
         ORDER BY p.updated_at DESC, p.id DESC`
@@ -89,7 +106,7 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
         ORDER BY name COLLATE NOCASE LIMIT 20`
     ),
     update: db.prepare(
-      `UPDATE plans SET name = ?, data = ?, version = version + 1, updated_at = ?, updated_by = ? WHERE id = ?`
+      `UPDATE plans SET name = ?, data = ?, schema = ?, version = version + 1, updated_at = ?, updated_by = ? WHERE id = ?`
     ),
     del: db.prepare("DELETE FROM plans WHERE id = ?"),
     lastHistory: db.prepare("SELECT saved_at FROM plan_history WHERE plan_id = ? ORDER BY id DESC LIMIT 1"),
@@ -104,7 +121,20 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
       `SELECT id, version, name, saved_by, saved_at FROM plan_history WHERE plan_id = ? ORDER BY id DESC`
     ),
     getHistory: db.prepare("SELECT * FROM plan_history WHERE id = ? AND plan_id = ?"),
+    catalogAll: db.prepare("SELECT * FROM catalog ORDER BY builtin DESC, sort, id"),
+    catalogGet: db.prepare("SELECT * FROM catalog WHERE id = ?"),
+    catalogUpsertBuiltin: db.prepare(
+      `INSERT INTO catalog (id, builtin, hidden, sort, def, updated_at) VALUES (?, 1, 0, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET builtin = 1, sort = excluded.sort, def = excluded.def,
+         updated_at = CASE WHEN catalog.def = excluded.def THEN catalog.updated_at ELSE excluded.updated_at END`
+    ),
+    catalogInsert: db.prepare("INSERT INTO catalog (id, builtin, hidden, sort, def, updated_at) VALUES (?, 0, ?, 0, ?, ?)"),
+    catalogUpdate: db.prepare("UPDATE catalog SET def = ?, hidden = ?, updated_at = ? WHERE id = ? AND builtin = 0"),
+    catalogHide: db.prepare("UPDATE catalog SET hidden = ?, updated_at = ? WHERE id = ?"),
+    catalogDelete: db.prepare("DELETE FROM catalog WHERE id = ? AND builtin = 0"),
   };
+
+  const entry = (row) => row && { ...JSON.parse(row.def), id: row.id, builtin: row.builtin === 1, hidden: row.hidden === 1 };
 
   function tx(fn) {
     db.exec("BEGIN IMMEDIATE");
@@ -122,13 +152,46 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
     }
   }
 
+  // Eingebauten Grundkatalog abgleichen: neue und geänderte Einträge übernehmen,
+  // entfallene entfernen. "Ausgeblendet" und eigene Geräte bleiben unberührt.
+  tx(() => {
+    const now = new Date().toISOString();
+    const ids = new Set();
+    BUILTIN_CATALOG.forEach((def, i) => {
+      const { id, ...rest } = def;
+      ids.add(id);
+      q.catalogUpsertBuiltin.run(id, i, JSON.stringify(rest), now);
+    });
+    for (const row of q.catalogAll.all()) {
+      if (row.builtin === 1 && !ids.has(row.id)) db.prepare("DELETE FROM catalog WHERE id = ?").run(row.id);
+    }
+  });
+
   return {
     raw: db,
     close: () => db.close(),
 
-    createPlan({ owner, ownerName, name, data }) {
+    // ----- Gerätekatalog -----
+    listCatalog: () => q.catalogAll.all().map(entry),
+    getCatalogEntry: (id) => entry(q.catalogGet.get(id)) ?? null,
+    createCatalogEntry(id, def, hidden = false) {
+      q.catalogInsert.run(id, hidden ? 1 : 0, JSON.stringify(def), new Date().toISOString());
+      return entry(q.catalogGet.get(id));
+    },
+    /** Nur eigene Geräte; eingebaute lassen sich lediglich ausblenden. */
+    updateCatalogEntry(id, def, hidden) {
+      q.catalogUpdate.run(JSON.stringify(def), hidden ? 1 : 0, new Date().toISOString(), id);
+      return entry(q.catalogGet.get(id));
+    },
+    setCatalogHidden(id, hidden) {
+      q.catalogHide.run(hidden ? 1 : 0, new Date().toISOString(), id);
+      return entry(q.catalogGet.get(id));
+    },
+    deleteCatalogEntry: (id) => q.catalogDelete.run(id).changes > 0,
+
+    createPlan({ owner, ownerName, name, data, schema = 1 }) {
       const now = new Date().toISOString();
-      const r = q.insert.run(owner, ownerName ?? null, name, data, now, now, ownerName ?? null);
+      const r = q.insert.run(owner, ownerName ?? null, name, data, schema, now, now, ownerName ?? null);
       return { id: Number(r.lastInsertRowid), version: 1, updated_at: now };
     },
 
@@ -171,7 +234,7 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
      * In den Verlauf wandert der VORHERIGE Stand, aber höchstens alle
      * historyMinIntervalMs, damit Autosave den Verlauf nicht flutet.
      */
-    updatePlan({ id, name, data, expectedVersion, editorName }) {
+    updatePlan({ id, name, data, schema = 1, expectedVersion, editorName }) {
       return tx(() => {
         const row = q.get.get(id);
         if (!row) return { status: "missing" };
@@ -188,7 +251,7 @@ export function openDb(dbPath, { historyKeep = 50, historyMinIntervalMs = 600_00
           q.addHistory.run(id, row.version, row.name, row.data, row.updated_by ?? null, row.updated_at);
           q.pruneHistory.run(id, id, historyKeep);
         }
-        q.update.run(name, data, now, editorName ?? null, id);
+        q.update.run(name, data, schema, now, editorName ?? null, id);
         return { status: "ok", version: row.version + 1, updated_at: now };
       });
     },
