@@ -1,0 +1,17 @@
+services:
+  hv-planer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/drag0n141/hv-planer:latest
+    container_name: hv-planer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - hv_planer_data:/data
+
+volumes:
+  hv_planer_data:

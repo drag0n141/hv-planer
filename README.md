@@ -10,7 +10,7 @@ The planner itself (frontend) is HV-Planer V6.66 by its upstream author. `web/` 
 unmodified upstream files by `tools/patch_frontend.py`; nothing in the upstream code is edited by hand.
 
 > **License:** the upstream planner is only published as "free to use". Do not redistribute the patched
-> planner without asking the upstream author. The server code (`server/`, `tools/`, `deploy/`) is separate from that.
+> planner without asking the upstream author. The server code (`server/`, `tools/`) is separate from that.
 
 ## Quick start (local, no OIDC)
 
@@ -27,8 +27,15 @@ APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
    Without a client secret the client is treated as a public client (PKCE only).
 2. Set the environment variables (see `.env.example`). Required: `APP_URL`, `SESSION_SECRET` (≥ 32 chars),
    `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`.
-3. Build the image (`docker build -t hv-planer .`) and run it with a volume on `/data`.
-   A Kubernetes example is in `deploy/k8s.example.yaml`.
+3. Start it with Docker Compose:
+
+   ```bash
+   cp .env.example .env   # fill in the values
+   docker compose up -d
+   ```
+
+   The compose file uses the published image `ghcr.io/drag0n141/hv-planer:latest`; `docker compose up -d --build`
+   builds it locally instead. Data lives in the `hv_planer_data` volume (`/data`).
 
 | Variable | Default | Description |
 |---|---|---|
