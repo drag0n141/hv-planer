@@ -17,8 +17,8 @@ export function makeWebDir() {
 export async function startApp(extraEnv = {}, { quiet = true } = {}) {
   const webDir = makeWebDir();
   const config = loadConfig({
-    BASE_URL: "http://localhost:3000",
-    OIDC_ISSUER: "http://idp.invalid",
+    APP_URL: "http://localhost:3000",
+    OIDC_ISSUER_URL: "http://idp.invalid",
     OIDC_CLIENT_ID: "hv",
     OIDC_CLIENT_SECRET: "secret",
     SESSION_SECRET: SECRET,

@@ -1,79 +1,100 @@
 # HV-Planer Server
 
-Server-Variante des **HV-Planer** (Schaltschrank-/Verteilerdokumentation im Browser) mit
+Server edition of **HV-Planer** (browser-based fuse box / distribution board documentation) with
 
-- **OIDC-Anmeldung in der Anwendung selbst** (Authorization Code + PKCE, State/Nonce)
-- **SQLite-Speicher** (Node-eingebautes `node:sqlite`, keine native Abhängigkeit)
-- Planliste, **Autosave**, **Versionsverlauf** mit Wiederherstellen, Konflikterkennung
+- **OIDC login built into the application** (Authorization Code + PKCE, state, nonce)
+- **SQLite storage** (Node's built-in `node:sqlite`, no native dependencies)
+- plan list, **autosave**, **version history** with restore, and conflict detection
 
-Der Planer selbst (Frontend) stammt von „Marcel“ (HV-Planer V6.66). `web/` wird per
-`tools/patch_frontend.py` aus den Originaldateien erzeugt; am Original ist nichts von Hand geändert.
+The planner itself (frontend) is HV-Planer V6.66 by its upstream author. `web/` is generated from the
+unmodified upstream files by `tools/patch_frontend.py`; nothing in the upstream code is edited by hand.
 
-> **Lizenz:** Der Upstream-Planer steht nur unter „Kostenlos nutzbar“. Dieses Repo nicht öffentlich
-> machen und den gepatchten Planer nicht weitergeben, ohne den Autor zu fragen. Der Servercode
-> (`server/`, `tools/`, `deploy/`) ist davon getrennt.
+> **License:** the upstream planner is only published as "free to use". Do not redistribute the patched
+> planner without asking the upstream author. The server code (`server/`, `tools/`, `deploy/`) is separate from that.
 
-## Schnellstart (lokal, ohne OIDC)
+## Quick start (local, no OIDC)
 
 ```bash
 cd server && npm ci
-BASE_URL=http://localhost:8080 AUTH_DISABLED=true SESSION_SECRET=$(openssl rand -hex 32) \
-OIDC_ISSUER=http://unused OIDC_CLIENT_ID=x OIDC_CLIENT_SECRET=x npm start
+APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
 ```
-`AUTH_DISABLED=true` nur für Entwicklung – es gibt dann keine Anmeldung.
 
-## Betrieb mit OIDC
+`AUTH_DISABLED=true` is for development only – there is no login at all in that mode.
 
-1. Im Identity Provider einen Client anlegen, Redirect-URI: **`<BASE_URL>/auth/callback`**.
-2. Env-Variablen setzen (siehe `.env.example`), Pflicht: `BASE_URL`, `SESSION_SECRET` (≥ 32 Zeichen),
-   `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`.
-3. Image bauen (`docker build -t hv-planer .`) und mit Volume auf `/data` starten.
-   Beispiel für Kubernetes: `deploy/k8s.example.yaml`.
+## Running with OIDC
 
-| Variable | Standard | Bedeutung |
+1. Create a client in your identity provider with the redirect URI **`<APP_URL>/api/auth/oidc/callback`**.
+   Without a client secret the client is treated as a public client (PKCE only).
+2. Set the environment variables (see `.env.example`). Required: `APP_URL`, `SESSION_SECRET` (≥ 32 chars),
+   `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`.
+3. Build the image (`docker build -t hv-planer .`) and run it with a volume on `/data`.
+   A Kubernetes example is in `deploy/k8s.example.yaml`.
+
+| Variable | Default | Description |
 |---|---|---|
-| `OIDC_AUTH_METHOD` | `basic` | `basic`, `post` oder `none` (Public Client, nur PKCE) |
-| `OIDC_SCOPES` | `openid profile email` | für Gruppen z. B. `… groups` ergänzen |
-| `OIDC_ALLOWED_EMAILS` | – | Komma-Liste; leer = alle angemeldeten Nutzer |
-| `OIDC_ALLOWED_GROUPS` | – | Komma-Liste, geprüft gegen `OIDC_GROUPS_CLAIM` (Standard `groups`) |
-| `SHARE_PLANS` | `false` | `true`: alle zugelassenen Nutzer sehen/bearbeiten alle Pläne |
-| `SESSION_TTL_HOURS` | `168` | Sitzungsdauer, wird bei Aktivität verlängert |
-| `HISTORY_KEEP` | `50` | aufbewahrte Versionen je Plan |
-| `HISTORY_MIN_INTERVAL_MINUTES` | `10` | höchstens alle X Minuten eine neue Verlaufsversion |
-| `DB_PATH` | `/data/hv-planer.sqlite` (Image) | SQLite-Datei |
-| `MAX_BODY_MB` | `5` | maximale Plangröße |
+| `APP_URL` | – | Public URL of the app, no trailing slash |
+| `SESSION_SECRET` | – | Signs session cookies, at least 32 characters |
+| `OIDC_ISSUER_URL` | – | Issuer URL (discovery via `/.well-known/openid-configuration`) |
+| `OIDC_CLIENT_ID` | – | Client ID |
+| `OIDC_CLIENT_SECRET` | – | Empty = public client; otherwise `client_secret_post` |
+| `OIDC_PROVIDER_NAME` | `OIDC Provider` | Label of the login button |
+| `OIDC_SCOPES` | `openid email profile` | Add `groups` if you filter by groups |
+| `OIDC_ALLOWED_EMAILS` | – | Comma-separated list; empty = every user the IdP lets in |
+| `OIDC_ALLOWED_GROUPS` | – | Comma-separated list, checked against `OIDC_GROUPS_CLAIM` (default `groups`) |
+| `SHARE_PLANS` | `false` | `true`: all allowed users see and edit all plans |
+| `SESSION_TTL_HOURS` | `168` | Session lifetime, renewed on activity |
+| `HISTORY_KEEP` | `50` | Versions kept per plan |
+| `HISTORY_MIN_INTERVAL_MINUTES` | `10` | At most one history version per interval |
+| `DB_PATH` | `/data/hv-planer.sqlite` (image) | SQLite file |
+| `MAX_BODY_MB` | `5` | Maximum plan size |
+| `PORT` | `8080` | Listen port |
 
-Ohne `OIDC_ALLOWED_EMAILS`/`OIDC_ALLOWED_GROUPS` kommt **jeder**, der sich beim IdP anmelden kann, hinein.
-Beim Start gibt der Server dazu eine Warnung aus.
+Without `OIDC_ALLOWED_EMAILS` / `OIDC_ALLOWED_GROUPS`, **anyone** who can sign in at the identity provider gets
+access. The server logs a warning at startup in that case.
 
-## Verhalten
+## Login flow
 
-- Plan = Feld „Projektname“. Erstes Speichern legt den Plan an, danach Autosave (~3 s nach Änderung), Strg+S speichert sofort.
-- Zwei Tabs/Nutzer: optimistische Sperre; bei Konflikt fragt „Speichern“, ob überschrieben werden soll.
-- „Verlauf“ in der Planliste stellt ältere Versionen wieder her (wird als neue Version gespeichert).
-- „Plan speichern/laden“ heißt dann „Export/Import JSON“ und arbeitet weiter mit Dateien.
-- Öffnet man den Planer per `file://` oder ohne Server, funktioniert er wie das Original.
-- Abmelden beendet nur die Sitzung dieser App, nicht die beim IdP (kein RP-initiated Logout).
+1. `/login` starts `GET /api/auth/oidc/initiate` and redirects to the provider (Authorization Code + PKCE S256,
+   state, nonce). State and PKCE verifier are kept server-side in memory; a short-lived cookie additionally
+   binds the flow to the browser that started it.
+2. The provider calls `GET /api/auth/oidc/callback`. The server redeems the code and checks the allow lists.
+3. The browser is redirected to `/login?code=…` with a **one-time exchange code** (valid for 60 s). The login
+   page redeems it via `POST /api/auth/oidc/exchange` and receives the session (HttpOnly cookie).
+4. `GET /api/auth/oidc/config` publicly returns `enabled` and `providerName`; `POST /api/auth/logout` ends the session.
 
-## Sicherheit
+The provider must return the `sub` and `email` claims. State is held in memory, so run a single instance;
+a restart only aborts logins that are in progress.
 
-Signierte HttpOnly/SameSite=Lax-Cookies, CSRF-Schutz über Pflicht-Header `X-HV-Client` bei schreibenden
-Requests, Open-Redirect-Schutz beim Login, parametrisierte SQL-Abfragen, Planliste per `textContent` (kein XSS).
-Hinter TLS betreiben (`BASE_URL` mit `https://` aktiviert `Secure`-Cookies). Es läuft **ein** Pod (SQLite).
+## Behavior
+
+- The plan name is the "Projektname" field. The first save creates the plan; afterwards autosave runs ~3 s after
+  a change. Ctrl+S saves immediately.
+- Two tabs or users: optimistic locking. On conflict, "Save" asks whether to overwrite.
+- "Verlauf" (history) in the plan list restores older versions (saved as a new version).
+- "Plan speichern/laden" becomes "Export/Import JSON" and keeps working with files.
+- Opened via `file://` or without the server, the planner behaves like the original.
+- Logging out ends this app's session only, not the session at the identity provider.
+
+## Security
+
+Signed HttpOnly / SameSite=Lax cookies, CSRF protection through a required `X-HV-Client` header on state-changing
+requests, open-redirect protection on login, parameterized SQL, plan list rendered via `textContent` (no XSS).
+Run behind TLS (an `https://` `APP_URL` enables `Secure` cookies). Run exactly **one** instance (SQLite, in-memory login state).
 
 ## Backup
 
-SQLite im Betrieb nicht einfach kopieren: `sqlite3 /data/hv-planer.sqlite ".backup /backup/hv.sqlite"`
-oder Litestream; alternativ Volume-Snapshots.
+Do not simply copy a live SQLite file: use `sqlite3 /data/hv-planer.sqlite ".backup /backup/hv.sqlite"`,
+Litestream, or volume snapshots.
 
-## Upstream-Update einspielen
+## Updating to a new upstream version
 
 ```bash
-python3 tools/patch_frontend.py <neues-upstream-verzeichnis> web
+python3 tools/patch_frontend.py <new-upstream-dir> web
 cd server && npm test
 ```
-Passt eine Stelle nicht mehr, bricht das Skript mit „PATCH-FEHLER“ ab.
+
+If an anchor no longer matches, the script aborts with `PATCH-FEHLER` instead of producing a wrong build.
 
 ## Tests
 
-`cd server && npm test` – API, OIDC-Ende-zu-Ende (gegen `oidc-provider`) und Frontend-Integration (jsdom).
+`cd server && npm test` – API, end-to-end OIDC login (against `oidc-provider`) and frontend integration (jsdom).

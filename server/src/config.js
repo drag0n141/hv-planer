@@ -26,7 +26,7 @@ export function loadConfig(env = process.env) {
 
   const cfg = {
     port: num(env.PORT, 8080),
-    baseUrl: String(env.BASE_URL || "").replace(/\/+$/, ""),
+    appUrl: String(env.APP_URL || "").replace(/\/+$/, ""),
     dbPath: env.DB_PATH || path.resolve(here, "../data/hv-planer.sqlite"),
     webDir: env.WEB_DIR || path.resolve(here, "../../web"),
     authDisabled,
@@ -37,12 +37,13 @@ export function loadConfig(env = process.env) {
     historyMinIntervalMs: Math.round(num(env.HISTORY_MIN_INTERVAL_MINUTES, 10) * 60_000),
     maxBodyBytes: Math.round(num(env.MAX_BODY_MB, 5) * 1024 * 1024),
     oidc: {
-      issuer: env.OIDC_ISSUER || "",
+      enabled: bool(env.OIDC_ENABLED, true),
+      providerName: env.OIDC_PROVIDER_NAME || "OIDC Provider",
+      issuer: env.OIDC_ISSUER_URL || "",
       clientId: env.OIDC_CLIENT_ID || "",
+      // Ohne Secret: öffentlicher Client (nur PKCE)
       clientSecret: env.OIDC_CLIENT_SECRET || "",
-      // basic | post | none (none = öffentlicher Client, nur PKCE)
-      authMethod: String(env.OIDC_AUTH_METHOD || (env.OIDC_CLIENT_SECRET ? "basic" : "none")).toLowerCase(),
-      scopes: env.OIDC_SCOPES || "openid profile email",
+      scopes: env.OIDC_SCOPES || "openid email profile",
       allowHttp: bool(env.OIDC_ALLOW_HTTP),
       allowedEmails: list(env.OIDC_ALLOWED_EMAILS).map((s) => s.toLowerCase()),
       allowedGroups: list(env.OIDC_ALLOWED_GROUPS),
@@ -50,17 +51,15 @@ export function loadConfig(env = process.env) {
     },
   };
 
-  if (!["basic", "post", "none"].includes(cfg.oidc.authMethod)) {
-    throw new Error("OIDC_AUTH_METHOD muss basic, post oder none sein.");
-  }
-
   if (!authDisabled) {
+    if (!cfg.oidc.enabled) {
+      throw new Error("OIDC_ENABLED=false ist nur zusammen mit AUTH_DISABLED=true (nur Entwicklung) erlaubt.");
+    }
     const missing = [];
-    if (!cfg.baseUrl) missing.push("BASE_URL");
-    if (!cfg.oidc.issuer) missing.push("OIDC_ISSUER");
+    if (!cfg.appUrl) missing.push("APP_URL");
+    if (!cfg.oidc.issuer) missing.push("OIDC_ISSUER_URL");
     if (!cfg.oidc.clientId) missing.push("OIDC_CLIENT_ID");
     if (!cfg.sessionSecret) missing.push("SESSION_SECRET");
-    if (cfg.oidc.authMethod !== "none" && !cfg.oidc.clientSecret) missing.push("OIDC_CLIENT_SECRET");
     if (missing.length) {
       throw new Error(`Fehlende Konfiguration: ${missing.join(", ")}`);
     }
@@ -68,9 +67,10 @@ export function loadConfig(env = process.env) {
       throw new Error("SESSION_SECRET muss mindestens 32 Zeichen lang sein.");
     }
   }
-  if (cfg.baseUrl) new URL(cfg.baseUrl); // früh scheitern bei ungültiger URL
+  if (cfg.appUrl) new URL(cfg.appUrl); // früh scheitern bei ungültiger URL
 
-  cfg.secureCookies = cfg.baseUrl.startsWith("https://");
-  cfg.redirectUri = cfg.baseUrl ? `${cfg.baseUrl}/auth/callback` : "";
+  cfg.secureCookies = cfg.appUrl.startsWith("https://");
+  // Redirect-URI, die im Identity Provider eingetragen werden muss
+  cfg.redirectUri = cfg.appUrl ? `${cfg.appUrl}/api/auth/oidc/callback` : "";
   return cfg;
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 import { loadConfig } from "../src/config.js";
-import { safeReturn } from "../src/auth.js";
+import { safeRedirect } from "../src/auth.js";
 import { parseCookies, sign, verify } from "../src/session.js";
 import { SECRET, client, samplePlan, sessionCookie, startApp } from "./helpers.js";
 
@@ -33,31 +33,36 @@ describe("Session-Cookies", () => {
 
 describe("Konfiguration & Redirect-Schutz", () => {
   test("Pflichtwerte werden verlangt", () => {
-    assert.throws(() => loadConfig({}), /BASE_URL.*OIDC_ISSUER.*OIDC_CLIENT_ID.*SESSION_SECRET/);
+    assert.throws(() => loadConfig({}), /APP_URL.*OIDC_ISSUER_URL.*OIDC_CLIENT_ID.*SESSION_SECRET/);
     assert.throws(
-      () => loadConfig({ BASE_URL: "https://a.example", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "kurz", OIDC_AUTH_METHOD: "none" }),
+      () => loadConfig({ APP_URL: "https://a.example", OIDC_ISSUER_URL: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "kurz" }),
       /mindestens 32/
     );
     assert.throws(
-      () => loadConfig({ BASE_URL: "https://a.example", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "s".repeat(40), OIDC_AUTH_METHOD: "basic" }),
-      /OIDC_CLIENT_SECRET/
+      () => loadConfig({ APP_URL: "https://a.example", OIDC_ISSUER_URL: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "s".repeat(40), OIDC_ENABLED: "false" }),
+      /OIDC_ENABLED/
     );
-    assert.throws(() => loadConfig({ AUTH_DISABLED: "true", OIDC_AUTH_METHOD: "kaputt" }), /OIDC_AUTH_METHOD/);
   });
-  test("öffentlicher Client ohne Secret ist erlaubt", () => {
-    const c = loadConfig({ BASE_URL: "https://a.example/", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "s".repeat(40) });
-    assert.equal(c.oidc.authMethod, "none");
-    assert.equal(c.baseUrl, "https://a.example");
+  test("öffentlicher Client ohne Secret ist erlaubt, Redirect-URI wird abgeleitet", () => {
+    const c = loadConfig({ APP_URL: "https://a.example/", OIDC_ISSUER_URL: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "s".repeat(40) });
+    assert.equal(c.oidc.clientSecret, "");
+    assert.equal(c.oidc.scopes, "openid email profile");
+    assert.equal(c.oidc.providerName, "OIDC Provider");
+    assert.equal(c.appUrl, "https://a.example");
+    assert.equal(c.redirectUri, "https://a.example/api/auth/oidc/callback");
     assert.equal(c.secureCookies, true);
   });
-  test("safeReturn lässt nur lokale Pfade zu", () => {
-    assert.equal(safeReturn("/plan?x=1"), "/plan?x=1");
-    assert.equal(safeReturn("//evil.example"), "/");
-    assert.equal(safeReturn("https://evil.example"), "/");
-    assert.equal(safeReturn("/\\evil"), "/");
-    assert.equal(safeReturn("/auth/login"), "/");
-    assert.equal(safeReturn(undefined), "/");
-    assert.equal(safeReturn(["/a"]), "/");
+  test("safeRedirect lässt nur Ziele innerhalb der App zu", () => {
+    const app = "https://a.example";
+    assert.equal(safeRedirect("/plan?x=1#h", app), "/plan?x=1#h");
+    assert.equal(safeRedirect("https://a.example/plan", app), "/plan");
+    assert.equal(safeRedirect("//evil.example", app), "/");
+    assert.equal(safeRedirect("https://evil.example", app), "/");
+    assert.equal(safeRedirect("/\\evil", app), "/");
+    assert.equal(safeRedirect("/api/plans", app), "/");
+    assert.equal(safeRedirect("/login?code=x", app), "/");
+    assert.equal(safeRedirect(undefined, app), "/");
+    assert.equal(safeRedirect(["/a"], app), "/");
   });
 });
 
@@ -75,7 +80,7 @@ describe("API", () => {
     assert.equal((await anon("GET", "/api/plans")).status, 401);
     const page = await anon("GET", "/");
     assert.equal(page.status, 302);
-    assert.equal(page.res.headers.get("location"), "/auth/login?return=%2F");
+    assert.equal(page.res.headers.get("location"), "/login?redirect=%2F");
     assert.equal((await anon("GET", "/healthz")).status, 200);
   });
 
@@ -186,7 +191,7 @@ describe("API", () => {
   });
 
   test("Abmelden löscht das Cookie", async () => {
-    const out = await alice("POST", "/auth/logout");
+    const out = await alice("POST", "/api/auth/logout");
     assert.equal(out.status, 200);
     assert.match(out.res.headers.get("set-cookie"), /hv_session=;.*Max-Age=0/);
   });

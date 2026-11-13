@@ -2834,7 +2834,7 @@
       statusEl.className="server-status err";
       statusEl.textContent="Sitzung abgelaufen – ";
       const a=el("a",null,"neu anmelden");
-      a.href="/auth/login?return=%2F";a.target="_blank";a.rel="noopener";
+      a.href="/login?redirect=%2F";a.target="_blank";a.rel="noopener";
       statusEl.append(a);
     }
 
@@ -3009,9 +3009,9 @@
       };
       $q("#logoutBtn").onclick=async()=>{
         if(isDirty()&&!await save({manual:true})&&!confirm("Ungespeicherte Änderungen gehen verloren. Trotzdem abmelden?"))return;
-        try{await req("POST","/auth/logout")}catch(e){}
+        try{await req("POST","/api/auth/logout")}catch(e){}
         S.enabled=false;
-        location.href="/auth/logged-out";
+        location.href="/login?loggedout=1";
       };
 
       document.addEventListener("keydown",ev=>{
