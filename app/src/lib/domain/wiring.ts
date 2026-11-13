@@ -119,9 +119,17 @@ export class Wiring {
     }
     const lineOuts = this.def(feeder).outputs.filter((p) => isLineKind(p.kind));
     const pot = (p: OutputPort) => this.outputPotential(feeder.id, p.id, seen);
-    if (lineOuts.length < 3 || cfg.busbar === "1P") {
+    if (lineOuts.length < 3) {
+      // Einpoliger Einspeiser (z. B. RCD 2P): die Schiene führt dessen Phase.
       const first = lineOuts.map(pot).find(isPhase);
       return first ?? cfg.start;
+    }
+    if (cfg.busbar === "1P") {
+      // 1-phasige Schiene hinter einem mehrpoligen Gerät: sie hängt an dem Pol, den die
+      // eingestellte Phase benennt, und führt, was dort tatsächlich anliegt.
+      const port = lineOuts.find((p) => p.kind === cfg.start);
+      const c = port ? pot(port) : null;
+      return isPhase(c) ? c : cfg.start;
     }
     // Die Schiene übernimmt die tatsächlich am Einspeisegerät anliegende Phasenfolge.
     const actual = base.map((nominal) => {

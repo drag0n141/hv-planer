@@ -156,6 +156,18 @@ describe("Phasen und Stromschiene", () => {
     expect(new Wiring(plan).phaseText(plan.devices[0])).toBe("L3");
   });
 
+  it("1-phasige Schiene hinter einem RCD 4P folgt der eingestellten Phase", () => {
+    const s = sample();
+    let plan = setRail(s.plan, 0, 0, { busbar: "1P", start: "L2" });
+    let w = new Wiring(plan);
+    expect([s.a, s.b, s.c].map((id) => w.phaseText(w.devices.get(id)!))).toEqual(["L2", "L2", "L2"]);
+    expect(w.link(w.devices.get(s.a)!, "IN")).toEqual({ from: s.rcd, port: "L2", implicit: true });
+    // verdreht eingespeist: am Pol L2 des RCD liegt L3 an
+    plan = connect(plan, s.rcd, "L2", { from: s.src, port: "L3" });
+    w = new Wiring(plan);
+    expect(w.phaseText(w.devices.get(s.a)!)).toBe("L3");
+  });
+
   it("trennt Schienenabschnitte nach RCD-Gruppe", () => {
     let plan = emptyPlan();
     plan = setBoard(plan, { fields: 1, rows: 1, te: 24 });
