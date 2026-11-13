@@ -37,7 +37,6 @@ export function loadConfig(env = process.env) {
     historyMinIntervalMs: Math.round(num(env.HISTORY_MIN_INTERVAL_MINUTES, 10) * 60_000),
     maxBodyBytes: Math.round(num(env.MAX_BODY_MB, 5) * 1024 * 1024),
     oidc: {
-      enabled: bool(env.OIDC_ENABLED, true),
       providerName: env.OIDC_PROVIDER_NAME || "OIDC Provider",
       issuer: env.OIDC_ISSUER_URL || "",
       clientId: env.OIDC_CLIENT_ID || "",
@@ -45,16 +44,10 @@ export function loadConfig(env = process.env) {
       clientSecret: env.OIDC_CLIENT_SECRET || "",
       scopes: env.OIDC_SCOPES || "openid email profile",
       allowHttp: bool(env.OIDC_ALLOW_HTTP),
-      allowedEmails: list(env.OIDC_ALLOWED_EMAILS).map((s) => s.toLowerCase()),
-      allowedGroups: list(env.OIDC_ALLOWED_GROUPS),
-      groupsClaim: env.OIDC_GROUPS_CLAIM || "groups",
     },
   };
 
   if (!authDisabled) {
-    if (!cfg.oidc.enabled) {
-      throw new Error("OIDC_ENABLED=false ist nur zusammen mit AUTH_DISABLED=true (nur Entwicklung) erlaubt.");
-    }
     const missing = [];
     if (!cfg.appUrl) missing.push("APP_URL");
     if (!cfg.oidc.issuer) missing.push("OIDC_ISSUER_URL");

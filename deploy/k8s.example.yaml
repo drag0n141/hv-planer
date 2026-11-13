@@ -34,8 +34,6 @@ spec:
             - { name: OIDC_ISSUER_URL, value: "https://idp.example.com/application/o/hv-planer/" }
             - { name: OIDC_CLIENT_ID, value: "hv-planer" }
             - { name: OIDC_PROVIDER_NAME, value: "SSO" }
-            - { name: OIDC_ALLOWED_GROUPS, value: "hv-planer" }
-            - { name: OIDC_SCOPES, value: "openid email profile groups" }
           envFrom: [{ secretRef: { name: hv-planer } }]
           readinessProbe: { httpGet: { path: /healthz, port: http } }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 10 }

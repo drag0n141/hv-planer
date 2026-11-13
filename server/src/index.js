@@ -70,10 +70,6 @@ export function start(env = process.env) {
 
   if (config.authDisabled) {
     console.warn("WARNUNG: AUTH_DISABLED=true – keine Anmeldung! Nur für lokale Entwicklung verwenden.");
-  } else if (!config.oidc.allowedEmails.length && !config.oidc.allowedGroups.length) {
-    console.warn(
-      "Hinweis: Weder OIDC_ALLOWED_EMAILS noch OIDC_ALLOWED_GROUPS gesetzt – jeder Nutzer, der sich beim Identity Provider anmelden darf, erhält Zugriff."
-    );
   }
 
   const server = app.listen(config.port, () => {

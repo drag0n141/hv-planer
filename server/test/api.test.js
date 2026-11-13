@@ -39,8 +39,8 @@ describe("Konfiguration & Redirect-Schutz", () => {
       /mindestens 32/
     );
     assert.throws(
-      () => loadConfig({ APP_URL: "https://a.example", OIDC_ISSUER_URL: "https://i", OIDC_CLIENT_ID: "c", SESSION_SECRET: "s".repeat(40), OIDC_ENABLED: "false" }),
-      /OIDC_ENABLED/
+      () => loadConfig({ APP_URL: "https://a.example", OIDC_ISSUER_URL: "https://i", OIDC_CLIENT_ID: "c" }),
+      /SESSION_SECRET/
     );
   });
   test("öffentlicher Client ohne Secret ist erlaubt, Redirect-URI wird abgeleitet", () => {

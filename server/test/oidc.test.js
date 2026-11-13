@@ -141,8 +141,8 @@ describe("OIDC-Anmeldung gegen Test-Provider", () => {
         { client_id: "hv-post", client_secret: "geheim-post", redirect_uris: [redirect], token_endpoint_auth_method: "client_secret_post" },
         { client_id: "hv-none", redirect_uris: [redirect], token_endpoint_auth_method: "none" },
       ],
-      claims: { openid: ["sub"], email: ["email", "email_verified"], profile: ["name"], groups: ["groups"] },
-      scopes: ["openid", "email", "profile", "groups"],
+      claims: { openid: ["sub"], email: ["email", "email_verified"], profile: ["name"] },
+      scopes: ["openid", "email", "profile"],
       features: { devInteractions: { enabled: true } },
       cookies: { keys: ["k".repeat(32)] },
       pkce: { required: () => true },
@@ -155,7 +155,7 @@ describe("OIDC-Anmeldung gegen Test-Provider", () => {
               email: `${id}@example.com`,
               email_verified: true,
               name: `Nutzer ${id}`,
-              groups: id === "carol" ? ["hv-users"] : [],
+              
             };
           },
         };
@@ -268,47 +268,6 @@ describe("OIDC-Anmeldung gegen Test-Provider", () => {
       assert.equal((await exchange(jar, "gibt-es-nicht")).status, 400);
       assert.equal((await exchange(jar, undefined)).status, 400);
       assert.equal(jar.get("hv_session"), undefined);
-    } finally {
-      await stopApp(a);
-    }
-  });
-
-  test("Freigabeliste für E-Mail-Adressen", async () => {
-    const a = await startApp("post", { OIDC_ALLOWED_EMAILS: "alice@example.com, Bob@Example.com" });
-    try {
-      const attempt = async (account) => {
-        const jar = new Jar();
-        const { callbackUrl } = await startLogin(jar, account);
-        return { ...(await finishLogin(jar, callbackUrl)), jar };
-      };
-      const ok = await attempt("bob");
-      assert.equal(ok.ex.status, 200);
-      assert.ok(ok.jar.get("hv_session"));
-
-      const denied = await attempt("mallory");
-      assert.equal(denied.cb.status, 302);
-      assert.equal(denied.loc.pathname, "/login");
-      assert.equal(denied.loc.searchParams.get("status"), "403");
-      assert.match(denied.loc.searchParams.get("error"), /nicht freigegeben/);
-      assert.equal(denied.code, undefined);
-      assert.equal((await request(denied.jar, `${base}/api/me`)).status, 401);
-    } finally {
-      await stopApp(a);
-    }
-  });
-
-  test("Freigabe über Gruppen-Claim", async () => {
-    const a = await startApp("post", { OIDC_ALLOWED_GROUPS: "hv-users", OIDC_SCOPES: "openid email profile groups" });
-    try {
-      const attempt = async (account) => {
-        const jar = new Jar();
-        const { callbackUrl } = await startLogin(jar, account);
-        return { ...(await finishLogin(jar, callbackUrl)), jar };
-      };
-      assert.equal((await attempt("dave")).loc.searchParams.get("status"), "403");
-      const carol = await attempt("carol");
-      assert.equal(carol.ex.status, 200);
-      assert.ok(carol.jar.get("hv_session"));
     } finally {
       await stopApp(a);
     }

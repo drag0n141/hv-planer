@@ -110,22 +110,6 @@ export function setupAuth(app, config, log = console) {
     return discovery;
   }
 
-  function isAllowed(claims) {
-    const emails = oc.allowedEmails;
-    const groups = oc.allowedGroups;
-    if (!emails.length && !groups.length) return true;
-    if (emails.length) {
-      const email = String(claims.email || "").toLowerCase();
-      if (email && claims.email_verified !== false && emails.includes(email)) return true;
-    }
-    if (groups.length) {
-      const raw = claims[oc.groupsClaim];
-      const have = Array.isArray(raw) ? raw.map(String) : raw ? [String(raw)] : [];
-      if (have.some((g) => groups.includes(g))) return true;
-    }
-    return false;
-  }
-
   function issueSession(res, user) {
     const payload = {
       t: "session",
@@ -209,9 +193,8 @@ export function setupAuth(app, config, log = console) {
         });
         let claims = { ...tokens.claims() };
 
-        // Fehlen E-Mail oder Gruppen im ID-Token, beim UserInfo-Endpunkt nachfragen.
-        const needsGroups = oc.allowedGroups.length && claims[oc.groupsClaim] == null;
-        if ((!claims.email || needsGroups) && tokens.access_token) {
+        // Fehlt die E-Mail im ID-Token, beim UserInfo-Endpunkt nachfragen.
+        if (!claims.email && tokens.access_token) {
           try {
             claims = { ...(await oidc.fetchUserInfo(cfg, tokens.access_token, claims.sub)), ...claims };
           } catch (e) {
@@ -222,11 +205,6 @@ export function setupAuth(app, config, log = console) {
         if (!claims.sub || !claims.email) {
           return toLogin(res, { error: `${oc.providerName} hat die Pflicht-Claims (email, sub) nicht geliefert.`, status: "400" });
         }
-        if (!isAllowed(claims)) {
-          log.warn?.(`Anmeldung abgelehnt (nicht freigegeben): sub=${claims.sub}`);
-          return toLogin(res, { error: "Dein Konto ist für diese Anwendung nicht freigegeben.", status: "403" });
-        }
-
         const exchangeCode = store.createExchangeCode({
           user: {
             sub: claims.sub,

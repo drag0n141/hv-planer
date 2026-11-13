@@ -38,10 +38,8 @@ APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
 | `OIDC_CLIENT_ID` | – | Client ID |
 | `OIDC_CLIENT_SECRET` | – | Empty = public client; otherwise `client_secret_post` |
 | `OIDC_PROVIDER_NAME` | `OIDC Provider` | Label of the login button |
-| `OIDC_SCOPES` | `openid email profile` | Add `groups` if you filter by groups |
-| `OIDC_ALLOWED_EMAILS` | – | Comma-separated list; empty = every user the IdP lets in |
-| `OIDC_ALLOWED_GROUPS` | – | Comma-separated list, checked against `OIDC_GROUPS_CLAIM` (default `groups`) |
-| `SHARE_PLANS` | `false` | `true`: all allowed users see and edit all plans |
+| `OIDC_SCOPES` | `openid email profile` | Requested scopes |
+| `SHARE_PLANS` | `false` | `true`: all signed-in users see and edit all plans |
 | `SESSION_TTL_HOURS` | `168` | Session lifetime, renewed on activity |
 | `HISTORY_KEEP` | `50` | Versions kept per plan |
 | `HISTORY_MIN_INTERVAL_MINUTES` | `10` | At most one history version per interval |
@@ -49,15 +47,14 @@ APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
 | `MAX_BODY_MB` | `5` | Maximum plan size |
 | `PORT` | `8080` | Listen port |
 
-Without `OIDC_ALLOWED_EMAILS` / `OIDC_ALLOWED_GROUPS`, **anyone** who can sign in at the identity provider gets
-access. The server logs a warning at startup in that case.
+Who may sign in is controlled by the identity provider (e.g. by assigning the application to users or groups there); the app accepts every user the provider authenticates.
 
 ## Login flow
 
 1. `/login` starts `GET /api/auth/oidc/initiate` and redirects to the provider (Authorization Code + PKCE S256,
    state, nonce). State and PKCE verifier are kept server-side in memory; a short-lived cookie additionally
    binds the flow to the browser that started it.
-2. The provider calls `GET /api/auth/oidc/callback`. The server redeems the code and checks the allow lists.
+2. The provider calls `GET /api/auth/oidc/callback`. The server redeems the code.
 3. The browser is redirected to `/login?code=…` with a **one-time exchange code** (valid for 60 s). The login
    page redeems it via `POST /api/auth/oidc/exchange` and receives the session (HttpOnly cookie).
 4. `GET /api/auth/oidc/config` publicly returns `enabled` and `providerName`; `POST /api/auth/logout` ends the session.
