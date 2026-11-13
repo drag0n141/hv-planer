@@ -202,3 +202,46 @@ test("Frontend: 'Zur Auswahl springen' ist standardmäßig aus", async () => {
     assert.equal($(dom, "#autoJump").checked, false);
   } finally { dom.window.close(); }
 });
+
+test("Frontend: Reihe nach unten/oben tauschen (Geräte, Stromschiene, Startphase)", { timeout: 30000 }, async () => {
+  const s = await startApp({ AUTH_DISABLED: "true", WEB_DIR: WEB });
+  let dom;
+  try {
+    const dev = (id, row, field = 0) => ({ id, type: "ls1", label: "B16", tech: "LS", mode: "te", widthTE: 1, field, row, xMM: 0, phase: "L1", inputFrom: null, inputPort: "OUT", installStatus: "existing" });
+    const data = {
+      version: "6.66", projectName: "Reihen", fields: 2, rows: 3, te: 12, nextId: 4,
+      devices: [dev(1, 0), dev(2, 1), dev(3, 0, 1)],
+      rowRailModes: { "0:0": "3P" }, phaseStarts: { "0:0": "L2" },
+    };
+    const created = s.db.createPlan({ owner: "dev", ownerName: "Entwicklung", name: "Reihen", data: JSON.stringify(data) });
+    dom = await openPage(s.base);
+    const doc = dom.window.document;
+    [...doc.querySelectorAll("#plansList button")].find((b) => b.textContent === "Öffnen").click();
+    await sleep(900);
+
+    const btn = (label, field, row) => doc.querySelector(`button.row-move-btn[aria-label="${label} (Feld ${field} Reihe ${row})"]`);
+    assert.equal(btn("Reihe nach oben", 1, 1).disabled, true, "oberste Reihe: Pfeil hoch deaktiviert");
+    assert.equal(btn("Reihe nach unten", 1, 3).disabled, true, "unterste Reihe: Pfeil runter deaktiviert");
+    btn("Reihe nach unten", 1, 1).click(); // Feld 1: Reihe 1 <-> Reihe 2
+    await sleep(5500); // Autosave
+    let saved = JSON.parse(s.db.getPlan(created.id).data);
+    const rowOf = (id) => saved.devices.find((d) => d.id === id);
+    assert.equal(rowOf(1).row, 1);
+    assert.equal(rowOf(2).row, 0);
+    assert.equal(rowOf(3).row, 0, "anderes Feld bleibt unberührt");
+    assert.equal(saved.rowRailModes["0:1"], "3P");
+    assert.equal(saved.phaseStarts["0:1"], "L2");
+    assert.equal(saved.rowRailModes["0:0"], undefined);
+    assert.equal(saved.phaseStarts["0:0"], undefined);
+
+    btn("Reihe nach oben", 1, 2).click(); // zurück
+    await sleep(5500);
+    saved = JSON.parse(s.db.getPlan(created.id).data);
+    assert.equal(rowOf(1).row, 0);
+    assert.equal(rowOf(2).row, 1);
+    assert.equal(saved.rowRailModes["0:0"], "3P");
+  } finally {
+    dom?.window.close();
+    await s.close();
+  }
+});

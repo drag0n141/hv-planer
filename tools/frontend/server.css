@@ -25,3 +25,5 @@
 .share-controls{display:flex;gap:6px;align-items:center}
 .share-results{display:flex;flex-direction:column;gap:6px}
 .plan-share input[type="search"]{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c9ced6;border-radius:6px;font:inherit}
+.row-move-btn{margin-left:6px;padding:0 6px;line-height:18px;font-size:12px;cursor:pointer}
+.row-move-btn:disabled{opacity:.35;cursor:default}

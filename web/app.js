@@ -597,6 +597,23 @@
   function clearSnapGuides(){document.querySelectorAll(".snap-guide").forEach(e=>e.remove())}
   function showSnapGuide(rail,xMMValue){clearSnapGuides();const g=document.createElement("div");g.className="snap-guide";g.style.left=`${xMMValue*PX_PER_MM}px`;rail.appendChild(g)}
 
+  // Reihe mit der Nachbarreihe im selben Feld tauschen (Geräte, Stromschiene und Startphase wandern mit)
+  function swapRows(field,a,b){
+    if(a===b||a<0||b<0||a>=state.rows||b>=state.rows)return;
+    pushHistory("swap-row");
+    for(const d of state.devices){
+      if(d.field!==field)continue;
+      if(d.row===a)d.row=b;else if(d.row===b)d.row=a;
+    }
+    const ka=phaseStartKey(field,a),kb=phaseStartKey(field,b);
+    for(const map of [state.rowRailModes,state.phaseStarts]){
+      if(!map)continue;
+      const va=map[ka],vb=map[kb];
+      if(vb===undefined)delete map[ka];else map[ka]=vb;
+      if(va===undefined)delete map[kb];else map[kb]=va;
+    }
+    renderAll();
+  }
   function renderBoard(){
     els.board.innerHTML="";
     const board=document.createElement("div");board.className="board";
@@ -616,6 +633,16 @@
         phaseSelect.onchange=ev=>{ev.stopPropagation();pushHistory("rail-phase");setRowPhaseStart(f,r,ev.target.value);remapRowRcdOutputs(f,r);renderAll();};
         railSelect.onclick=ev=>ev.stopPropagation();
         phaseSelect.onclick=ev=>ev.stopPropagation();
+        {
+          const mk=(label,title,target)=>{
+            const b=document.createElement("button");b.type="button";b.className="row-move-btn no-print";
+            b.textContent=label;b.title=title;b.setAttribute("aria-label",`${title} (Feld ${f+1} Reihe ${r+1})`);
+            b.disabled=target<0||target>=state.rows;
+            b.onclick=ev=>{ev.stopPropagation();swapRows(f,r,target)};
+            return b;
+          };
+          railLabel.firstElementChild.append(mk("↑","Reihe nach oben",r-1),mk("↓","Reihe nach unten",r+1));
+        }
         wrap.appendChild(railLabel);
         const railWrap=document.createElement("div");railWrap.className="rail-wrap";
         const railMode=rowRailMode(f,r);

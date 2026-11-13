@@ -48,6 +48,11 @@ js = sub(js, 'autoJump:true,insertStatus:"existing",projectName:""', 'autoJump:f
 js = sub(js, "state.autoJump=data.autoJump!==false", "state.autoJump=data.autoJump===true", "autoJump-load")
 js = sub(js, "state.autoJump=true;els.autoJump.checked=true;", "state.autoJump=false;els.autoJump.checked=false;", "autoJump-reset")
 
+# 3c) Reihen innerhalb eines Feldes nach oben/unten tauschen
+js = sub(js, "  function renderBoard(){\n", (frag / "row-move.js").read_text(encoding="utf-8") + "  function renderBoard(){\n", "row-move-fn")
+js = sub(js, "        phaseSelect.onclick=ev=>ev.stopPropagation();\n        wrap.appendChild(railLabel);",
+         "        phaseSelect.onclick=ev=>ev.stopPropagation();\n" + (frag / "row-move-buttons.js").read_text(encoding="utf-8") + "        wrap.appendChild(railLabel);", "row-move-buttons")
+
 # 4) Server-Modul vor das abschließende })();
 body = js.rstrip()
 if not body.endswith("})();"):

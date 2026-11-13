@@ -81,6 +81,8 @@ a restart only aborts logins that are in progress.
   you stay invisible. Users appear in the picker after their first login.
 - Two tabs or users: optimistic locking. On conflict, "Save" asks whether to overwrite.
 - "Verlauf" (history) in the plan list restores older versions (saved as a new version).
+- Rows can be moved up and down within a field with the ↑/↓ buttons on each row (devices, busbar mode and start phase
+  move along; undo with Ctrl+Z). Up to 8 fields can be selected, and "Zur Auswahl springen" is off by default.
 - "Plan speichern/laden" becomes "Export/Import JSON" and keeps working with files.
 - Opened via `file://` or without the server, the planner behaves like the original.
 - Logging out ends this app's session only, not the session at the identity provider.
