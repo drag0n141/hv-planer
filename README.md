@@ -34,13 +34,16 @@ APP_URL=http://localhost:8080 AUTH_DISABLED=true npm start
    docker compose up -d
    ```
 
+   Generate the session secret with `openssl rand -hex 32` and put it into `.env` as `SESSION_SECRET`.
+   Changing it later signs everyone out; plans are not affected. Keep it out of Git (or encrypted).
+
    The compose file uses the published image `ghcr.io/drag0n141/hv-planer:latest`; `docker compose up -d --build`
    builds it locally instead. Data lives in the `hv_planer_data` volume (`/data`).
 
 | Variable | Default | Description |
 |---|---|---|
 | `APP_URL` | – | Public URL of the app, no trailing slash |
-| `SESSION_SECRET` | – | Signs session cookies, at least 32 characters |
+| `SESSION_SECRET` | – | Signs session cookies, at least 32 characters (see below) |
 | `OIDC_ISSUER_URL` | – | Issuer URL (discovery via `/.well-known/openid-configuration`) |
 | `OIDC_CLIENT_ID` | – | Client ID |
 | `OIDC_CLIENT_SECRET` | – | Empty = public client; otherwise `client_secret_post` |
