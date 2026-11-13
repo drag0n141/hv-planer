@@ -49,3 +49,34 @@
   .palette,.properties{grid-column:auto}
 }
 @media print{.properties{position:static;max-height:none;overflow:visible}}
+
+/* Touch / tablet / phone */
+.device{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.device.touch-dragging{opacity:.75;outline:2px dashed #2563eb;z-index:5}
+@media(pointer:coarse){
+  button,select,.config select,.properties input,.properties select{min-height:40px}
+  .row-move-btn{min-width:36px;min-height:36px}
+  .palette-item{min-height:48px}
+  .rail-label select{min-height:36px}
+}
+@media(max-width:1000px){
+  .topbar{padding:12px 14px;gap:10px;align-items:flex-start}
+  .topbar p{display:none}
+}
+@media(max-width:760px){
+  .topbar{flex-direction:column;align-items:stretch}
+  .topbar h1{font-size:19px;margin:0}
+  .actions{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .actions>*{flex:0 0 auto;white-space:nowrap}
+  .layout{padding:8px;gap:8px}
+  .config{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;padding:10px 12px;align-items:end}
+  .config>*{min-width:0}
+  .config select,.config input[type=text]{width:100%;min-width:0;box-sizing:border-box}
+  .config .view-scale-label,.config>label:first-child{grid-column:1/-1}
+  .view-scale-label{min-width:0}.view-scale-row input[type=range]{flex:1;width:auto}
+  /* Palette: Kategorien-Inhalt als horizontal scrollbare Leiste */
+  .palette{padding:10px;position:sticky;top:0;z-index:20;max-height:45vh;overflow-y:auto}
+  .palette>.hint,.palette>p{display:none}
+  .palette-category-items{display:flex!important;overflow-x:auto;gap:8px;padding:8px;-webkit-overflow-scrolling:touch}
+  .palette-category-items .palette-item{flex:0 0 150px}
+}

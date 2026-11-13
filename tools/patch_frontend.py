@@ -53,6 +53,13 @@ js = sub(js, "  function renderBoard(){\n", (frag / "row-move.js").read_text(enc
 js = sub(js, "        phaseSelect.onclick=ev=>ev.stopPropagation();\n        wrap.appendChild(railLabel);",
          "        phaseSelect.onclick=ev=>ev.stopPropagation();\n" + (frag / "row-move-buttons.js").read_text(encoding="utf-8") + "        wrap.appendChild(railLabel);", "row-move-buttons")
 
+# 3d) Touch: Rails bekommen Feld/Reihe als data-Attribute, Geräte lassen sich per langem Drücken ziehen
+js = sub(js, 'const rail=document.createElement("div");rail.className="rail";rail.style.width=',
+         'const rail=document.createElement("div");rail.className="rail";rail.dataset.field=f;rail.dataset.row=r;rail.style.width=', "rail-data")
+js = sub(js, "  function renderBoard(){\n", (frag / "touch-drag.js").read_text(encoding="utf-8") + "  function renderBoard(){\n", "touch-drag-fn")
+js = sub(js, "          rail.appendChild(el);\n        });\n\n        railWrap.appendChild(rail);",
+         "          attachTouchDrag(el,d);\n          rail.appendChild(el);\n        });\n\n        railWrap.appendChild(rail);", "touch-drag-call")
+
 # 4) Server-Modul vor das abschließende })();
 body = js.rstrip()
 if not body.endswith("})();"):
