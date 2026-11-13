@@ -183,3 +183,15 @@ test("Frontend: Teilen-Panel und Nur-Lesen für Betrachter", { timeout: 60000 },
     await s.close();
   }
 });
+
+test("Frontend: bis zu 8 Felder auswählbar", async () => {
+  const dom = await openPage("http://127.0.0.1:1", { fileMode: true });
+  try {
+    const sel = $(dom, "#fieldCount");
+    assert.equal(sel.options.length, 8);
+    sel.value = "5";
+    sel.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    await sleep(200);
+    assert.equal(dom.window.document.querySelectorAll("#board .field, .board .field").length, 5);
+  } finally { dom.window.close(); }
+});

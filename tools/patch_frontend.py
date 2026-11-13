@@ -56,6 +56,13 @@ html = sub(html, '      <button id="saveBtn">Plan speichern</button>\n',
 html = sub(html, '  <div id="helpModal" class="about-modal" hidden>',
            (frag / "plans-modal.html").read_text(encoding="utf-8") + '  <div id="helpModal" class="about-modal" hidden>', "html-modal")
 
+# Upstream erlaubt nur 1-3 Felder; Schränke mit mehr Feldern sind üblich (Auswahl bis 8)
+html = sub(html,
+           '<option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>',
+           '<option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>'
+           '<option value="4">4</option><option value="5">5</option><option value="6">6</option>'
+           '<option value="7">7</option><option value="8">8</option>', "field-count")
+
 # ---------- styles.css ----------
 css = (src / "styles.css").read_text(encoding="utf-8").rstrip("\n") + "\n" + (frag / "server.css").read_text(encoding="utf-8")
 
